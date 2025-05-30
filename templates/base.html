@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>{% block title %}StudyNest{% endblock %}</title>
+
+    <!-- Shared CSS & Fonts -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" />
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css?family=Roboto:300,400,500,700&display=swap" rel="stylesheet" />
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/mdb-ui-kit/9.0.0/mdb.min.css" rel="stylesheet" />
+    <link href="../static/style.css" rel="stylesheet">
+
+    {% block head %}{% endblock %}
+</head>
+
+<body>
+    <!-- Header -->
+    {% if not hide_header %}
+    <header class="container py-3 d-flex justify-content-between align-items-center mb-4">
+        <div class="d-flex align-items-center gap-2">
+            <a href="{{ url_for('home') }}" class="text-decoration-none d-flex align-items-center gap-2">
+                <i class="fas fa-crow fa-2x" style="color: #403c70;"></i>
+                <h1 class="h4 fw-bold mb-0" style="color: #403c70;">StudyNest</h1>
+            </a>
+        </div>
+
+        {% if user_name %}
+        <div class="dropdown">
+            <p class="dropdown-toggle text-decoration-none m-0" role="button" id="dropdownMenuLink"
+                data-bs-toggle="dropdown" aria-expanded="false">
+                {{ user_name }}
+            </p>
+            <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="dropdownMenuLink">
+                <li><a class="dropdown-item" href="#">Account</a></li>
+                <li><a class="dropdown-item" href="#" id="logOutBtn">Log out</a></li>
+            </ul>
+        </div>
+        {% endif %}
+    </header>
+    {% endif %}
+
+
+    {% block content %}{% endblock %}
+
+    <!-- Shared JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mdb-ui-kit/9.0.0/mdb.umd.min.js"></script>
+
+    {% block scripts %}{% endblock %}
+</body>
+
+</html>
