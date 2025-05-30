@@ -10,8 +10,8 @@ app = Flask(__name__)
 
 # TODO: consider wrapping repeated code in reusable helper functions
 # TODO: replace with dynamic user id upon login
-# user_id = 1  # student
-user_id = 3  # educator
+user_id = 1  # student
+# user_id = 3  # educator
 # user_id = 5  # admin
 
 @app.route("/")
@@ -174,7 +174,7 @@ def view_course(course_id):
     """, (course_id,))
     materials = cur.fetchall()
 
-    cur.execute("SELECT title, content FROM announcements WHERE course_id = %s ORDER BY posted_at DESC", (course_id,))
+    cur.execute("SELECT title, content, id FROM announcements WHERE course_id = %s ORDER BY posted_at DESC", (course_id,))
     announcements = cur.fetchall()
 
     cur.execute("SELECT role FROM users WHERE id = %s", (user_id,))
@@ -195,6 +195,30 @@ def view_course(course_id):
     cur.close()
     return render_template("course_details.html", course=course, materials=materials,
                            announcements=announcements, role=role, course_id=course_id, user_name=user_name)
+
+
+@app.route("/courses/<int:course_id>/announcement/<int:announcement_id>/delete", methods=["POST"])
+def delete_announcement(course_id, announcement_id):
+    cur = mysql.connection.cursor()
+
+    # Verify that this educator owns the course
+    cur.execute("""
+        SELECT 1
+        FROM announcements a
+        JOIN courses c ON a.course_id = c.id
+        WHERE a.id = %s AND c.id = %s AND c.educator_id = %s
+    """, (announcement_id, course_id, user_id))
+
+    if not cur.fetchone():
+        cur.close()
+        return "Access denied", 403
+
+    cur.execute("DELETE FROM announcements WHERE id = %s", (announcement_id,))
+    mysql.connection.commit()
+    cur.close()
+
+    return redirect(url_for("view_course", course_id=course_id))
+
 
 @app.route("/courses/<int:course_id>/forum", methods=["GET", "POST"])
 def course_forum(course_id):
