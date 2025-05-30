@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% block title %}Course Details{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="card mb-4">
+        <div class="card-body">
+            <h2 class="card-title">{{ course[0] }}</h2>
+            <p class="card-text">{{ course[1] }}</p>
+        </div>
+    </div>
+
+    {% if role == 'educator' %}
+    <div class="d-flex gap-3 mb-4">
+        <a href="{{ url_for('course_forum', course_id=course_id) }}" class="btn btn-outline-primary">
+            <i class="fas fa-comments"></i> Forum
+        </a>
+        <a href="{{ url_for('post_announcement', course_id=course_id) }}" class="btn btn-outline-warning">
+            <i class="fas fa-bullhorn"></i> Post Announcement
+        </a>
+        <a href="{{ url_for('upload_material', course_id=course_id) }}" class="btn btn-outline-success">
+            <i class="fas fa-upload"></i> Upload Material
+        </a>
+    </div>
+    {% endif %}
+
+    <h4>Announcements</h4>
+    <ul class="list-group mb-4">
+    {% for a in announcements %}
+        <li class="list-group-item">
+            <strong>{{ a[0] }}</strong><br>{{ a[1] }}
+        </li>
+    {% else %}
+        <li class="list-group-item">No announcements yet.</li>
+    {% endfor %}
+    </ul>
+
+    <h4>Materials</h4>
+    <ul class="list-group">
+    {% for material in materials %}
+        <li class="list-group-item d-flex justify-content-between align-items-center">
+            {{ material[1] }}
+            <a href="{{ url_for('download_material', material_id=material[0]) }}" class="btn btn-sm btn-outline-secondary">
+                <i class="fas fa-download"></i> Download
+            </a>
+        </li>
+    {% else %}
+        <li class="list-group-item">No materials available.</li>
+    {% endfor %}
+    </ul>
+</div>
+{% endblock %}
