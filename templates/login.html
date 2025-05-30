@@ -10,14 +10,26 @@
             <h1 class="h4 fw-bold" style="color: #403c70;">StudyNest</h1>
         </div>
 
-        <form>
+        {% if success %}
+        <div class="alert alert-success text-center" role="alert">
+            Account created successfully! You may now log in.
+        </div>
+        {% endif %}
+
+        {% if error %}
+        <div class="alert alert-danger text-center" role="alert">
+            {{ error }}
+        </div>
+        {% endif %}
+
+        <form method="POST" action="{{ url_for('login') }}">
             <div data-mdb-input-init class="form-outline mb-4">
-                <input type="email" id="form2Example1" class="form-control" />
+                <input type="email" name="email" id="form2Example1" class="form-control" />
                 <label class="form-label" for="form2Example1">Email address</label>
             </div>
 
             <div data-mdb-input-init class="form-outline mb-4">
-                <input type="password" id="form2Example2" class="form-control" />
+                <input type="password" name="password" id="form2Example2" class="form-control" />
                 <label class="form-label" for="form2Example2">Password</label>
             </div>
 
@@ -29,21 +41,21 @@
                 <div><a href="#!">Forgot password?</a></div>
             </div>
 
-            <button type="button" id="signInBtn" data-mdb-button-init data-mdb-ripple-init
+            <button type="submit" id="signInBtn" data-mdb-button-init data-mdb-ripple-init
                 class="btn btn-primary w-100 mb-4">Sign in</button>
 
             <div class="text-center">
-                <p>Not a member? <a href="#!">Register</a></p>
+                <p>Not a member? <a href="/register">Register</a></p>
             </div>
         </form>
     </div>
 </div>
 {% endblock %}
 
-{% block scripts %}
+<!-- {% block scripts %}
 <script>
     document.getElementById("signInBtn").addEventListener("click", function () {
         window.location.href = "/home";
     });
 </script>
-{% endblock %}
+{% endblock %} -->

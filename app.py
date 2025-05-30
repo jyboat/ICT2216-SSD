@@ -3,27 +3,53 @@ from flask import Flask, render_template, request, redirect, url_for, send_from_
 from werkzeug.utils import secure_filename
 import os
 from flask_mysqldb import MySQL
+from flask_bcrypt import Bcrypt
+from datetime import timedelta
+import time
 
 load_dotenv()  # Load environment variables from .env
 
 app = Flask(__name__)
 
+# bcrypt hashing
+app.secret_key = os.getenv("SECRET_KEY")
+bcrypt = Bcrypt(app)
+
+# session timeout
+app.permanent_session_lifetime = timedelta(minutes=15)
+
+# function to check if session has expired
+def is_session_expired():
+    if 'user_id' not in session:
+        return True
+    last = session.get('last_active', 0)
+    if time.time() - last > 900:  # 900 = 15 mins
+        session.clear()
+        return True
+    session['last_active'] = time.time()
+    return False
+
 # TODO: consider wrapping repeated code in reusable helper functions
 # TODO: replace with dynamic user id upon login
-user_id = 1  # student
+# user_id = 1  # student
 # user_id = 3  # educator
 # user_id = 5  # admin
 
 @app.route("/")
 def index():
-    return render_template("index.html", hide_header=True)
+    success = request.args.get('success') == '1'
+    return render_template("login.html", hide_header=True, success=success)
 
 @app.route("/home")
 def home():
+    if is_session_expired():
+        return redirect(url_for('index'))
+
+    user_id = session['user_id']
+    user_name = session['user_name']
+    role = session['role']
+
     cur = mysql.connection.cursor()
-    cur.execute("SELECT name, role FROM users WHERE id = %s", (user_id,))
-    user = cur.fetchone()
-    user_name, role = user
 
     announcements = []  
 
@@ -440,6 +466,69 @@ def delete_user(user_id):
     mysql.connection.commit()
     cur.close()
     return redirect(url_for("manage_users"))
+
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    if request.method == 'POST':
+        email = request.form['email']
+        password = request.form['password']
+
+        cur = mysql.connection.cursor()
+        cur.execute("SELECT * FROM users WHERE email = %s", (email,))
+        user = cur.fetchone()
+
+        if user:
+            stored_hash = user[3]
+            if bcrypt.check_password_hash(stored_hash, password):
+                session.permanent = True
+                session['user_id'] = user[0]
+                session['user_name'] = user[1]
+                session['role'] = user[4]
+                session['last_active'] = time.time()
+                return redirect(url_for('home'))
+
+    return render_template("login.html", error="Invalid email or password", hide_header=True)
+
+@app.route('/register', methods=['GET', 'POST'])
+def register():
+    if request.method == 'POST':
+        name = request.form['name'].strip()
+        email = request.form['email'].strip().lower()
+        password = request.form['password']
+        confirm_password = request.form['confirm_password']
+
+        # check for empty fields
+        if not name or not email or not password or not confirm_password:
+            return render_template("register.html", error="All fields are required")
+
+        # check that both password fields are the same
+        if password != confirm_password:
+            return render_template("register.html", error="Passwords do not match")
+
+        # check if email already exists
+        cur = mysql.connection.cursor()
+        cur.execute("SELECT * FROM users WHERE email = %s", (email,))
+        existing_user = cur.fetchone()
+        if existing_user:
+            return render_template("register.html", error="An account with that email already exists")
+
+        # check if password is at least 8 characters
+        if len(password) < 8:
+            return render_template("register.html", error="Password must be at least 8 characters")
+
+        hashed_pw = bcrypt.generate_password_hash(password).decode('utf-8')
+        cur.execute("INSERT INTO users (name, email, password_hash) VALUES (%s, %s, %s)",
+                    (name, email, hashed_pw))
+        mysql.connection.commit()
+
+        return redirect(url_for('index', success='1'))
+
+    return render_template("register.html")
+
+@app.route("/logout")
+def logout():
+    session.clear()
+    return redirect(url_for('index'))
 
 app.config['MYSQL_HOST'] = os.getenv('MYSQL_HOST')
 app.config['MYSQL_USER'] = os.getenv('MYSQL_USER')
