@@ -107,6 +107,85 @@ def download_material(material_id):
     response.headers.set("Content-Disposition", f"attachment; filename={file_name}")
     return response
 
+@app.route("/materials/<int:material_id>/edit", methods=["GET", "POST"])
+def edit_material(material_id):
+    cur = mysql.connection.cursor()
+
+    # Fetch existing data
+    cur.execute("""
+        SELECT course_id, title, description, file_name, mime_type
+        FROM materials
+        WHERE id = %s AND uploader_id = %s
+    """, (material_id, user_id))
+    material = cur.fetchone()
+
+    if not material:
+        cur.close()
+        return "Access denied or material not found", 403
+
+    course_id, current_title, current_desc, current_filename, current_mime = material
+
+    if request.method == "POST":
+        new_title = request.form["title"]
+        new_description = request.form["description"]
+
+        uploaded_file = request.files.get("file")
+        if uploaded_file and uploaded_file.filename:
+            # File was uploaded, update it
+            new_filename = secure_filename(uploaded_file.filename)
+            new_mime = uploaded_file.mimetype
+            new_file_data = uploaded_file.read()
+
+            cur.execute("""
+                UPDATE materials
+                SET title = %s, description = %s, file = %s, file_name = %s, mime_type = %s
+                WHERE id = %s AND uploader_id = %s
+            """, (new_title, new_description, new_file_data, new_filename, new_mime, material_id, user_id))
+        else:
+            # No new file uploaded — only update text fields
+            cur.execute("""
+                UPDATE materials
+                SET title = %s, description = %s
+                WHERE id = %s AND uploader_id = %s
+            """, (new_title, new_description, material_id, user_id))
+
+        mysql.connection.commit()
+        cur.close()
+
+        return redirect(url_for("view_course", course_id=course_id))
+
+    cur.close()
+    return render_template(
+        "edit_material.html",
+        title=current_title,
+        description=current_desc,
+        material_id=material_id,
+        course_id=course_id,
+        file_name=current_filename
+    )
+
+
+@app.route("/materials/<int:material_id>/delete", methods=["POST"])
+def delete_material(material_id):
+    cur = mysql.connection.cursor()
+
+    # Confirm ownership and get course_id for redirect
+    cur.execute("SELECT course_id FROM materials WHERE id = %s AND uploader_id = %s", (material_id, user_id))
+    result = cur.fetchone()
+
+    if not result:
+        cur.close()
+        return "Access denied or material not found", 403
+
+    course_id = result[0]
+
+    cur.execute("DELETE FROM materials WHERE id = %s", (material_id,))
+    mysql.connection.commit()
+    cur.close()
+
+    return redirect(url_for("view_course", course_id=course_id))
+
+
 @app.route("/courses/<int:course_id>/upload", methods=["GET", "POST"])
 def upload_material(course_id):
     cur = mysql.connection.cursor()

@@ -49,20 +49,30 @@
     <ul class="list-group">
         {% for material in materials %}
         <li class="list-group-item">
-            <div class="d-flex justify-content-between align-items-center">
+            <div class="d-flex justify-content-between align-items-start">
                 <div>
                     <strong>{{ material[1] }}</strong>
-                    <p class="mb-1 text-muted">{{ material[2] }}</p> <!-- description -->
+                    <p class="mb-1 text-muted">{{ material[2] }}</p>
                     <small class="text-muted">Uploaded on {{ material[3].strftime('%Y-%m-%d %H:%M') }}</small>
                 </div>
-                <a href="{{ url_for('download_material', material_id=material[0]) }}"
-                    class="btn btn-sm btn-outline-secondary">
-                    <i class="fas fa-download"></i> Download
-                </a>
+                <div class="btn-group">
+                    <a href="{{ url_for('download_material', material_id=material[0]) }}"
+                        class="btn btn-sm btn-outline-secondary">
+                        <i class="fas fa-download"></i>
+                    </a>
+                    <a href="{{ url_for('edit_material', material_id=material[0]) }}"
+                        class="btn btn-sm btn-outline-primary">
+                        <i class="fas fa-edit"></i>
+                    </a>
+                    <form method="POST" action="{{ url_for('delete_material', material_id=material[0]) }}"
+                        onsubmit="return confirm('Delete this material?')">
+                        <button type="submit" class="btn btn-sm btn-outline-danger">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </form>
+                </div>
             </div>
         </li>
-        {% else %}
-        <li class="list-group-item">No materials available.</li>
         {% endfor %}
     </ul>
 </div>
