@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block title %}New Announcement{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="card p-4">
+        <h3 class="mb-3"><i class="fas fa-bullhorn"></i> Post New Announcement</h3>
+
+        {% if role == 'educator' %}
+        <form method="post">
+            <div class="mb-3">
+                <label class="form-label">Title</label>
+                <input type="text" class="form-control" name="title" required>
+            </div>
+            <div class="mb-3">
+                <label class="form-label">Content</label>
+                <textarea class="form-control" name="content" rows="4" required></textarea>
+            </div>
+            <button type="submit" class="btn btn-warning">
+                <i class="fas fa-bullhorn"></i> Post
+            </button>
+        </form>
+        {% else %}
+        <p class="text-danger">Only educators can post announcements.</p>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
