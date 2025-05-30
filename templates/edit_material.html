@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block title %}Edit Material{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <h2>Edit Material</h2>
+    <form method="POST" enctype="multipart/form-data">
+        <div class="mb-3">
+            <label for="title" class="form-label">Title</label>
+            <input type="text" class="form-control" id="title" name="title" value="{{ title }}" required>
+        </div>
+        <div class="mb-3">
+            <label for="description" class="form-label">Description</label>
+            <textarea class="form-control" id="description" name="description" rows="3" required>{{ description }}</textarea>
+        </div>
+        <div class="mb-3">
+            <label for="file" class="form-label">Replace File (optional)</label>
+            <input class="form-control" type="file" id="file" name="file">
+            {% if file_name %}
+            <div class="form-text">Current file: {{ file_name }}</div>
+            {% endif %}
+        </div>
+        <button type="submit" class="btn btn-primary">Update</button>
+        <a href="{{ url_for('view_course', course_id=course_id) }}" class="btn btn-secondary">Cancel</a>
+    </form>
+</div>
+{% endblock %}
