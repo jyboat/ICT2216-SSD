@@ -1,4 +1,4 @@
-# ICT2216-Secure-Software-Development-SSD
+# ICT2216-SSD
 
 in CLI:
 pip install Flask
