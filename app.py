@@ -10,8 +10,8 @@ app = Flask(__name__)
 
 # TODO: consider wrapping repeated code in reusable helper functions
 # TODO: replace with dynamic user id upon login
-user_id = 1  # student
-# user_id = 3  # educator
+# user_id = 1  # student
+user_id = 3  # educator
 # user_id = 5  # admin
 
 @app.route("/")
@@ -166,7 +166,12 @@ def view_course(course_id):
     cur.execute("SELECT name, description FROM courses WHERE id = %s", (course_id,))
     course = cur.fetchone()
 
-    cur.execute("SELECT id, title FROM materials WHERE course_id = %s", (course_id,))
+    cur.execute("""
+    SELECT id, title, description, uploaded_at
+    FROM materials
+    WHERE course_id = %s
+    ORDER BY uploaded_at DESC
+    """, (course_id,))
     materials = cur.fetchall()
 
     cur.execute("SELECT title, content FROM announcements WHERE course_id = %s ORDER BY posted_at DESC", (course_id,))
