@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% block title %}{{ action }} User{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="card p-4">
+        <h3>{{ action }} User</h3>
+        <form method="post">
+            <div class="mb-3">
+                <label class="form-label">Name</label>
+                <input type="text" class="form-control" name="name" required value="{{ user[0] if user else '' }}">
+            </div>
+            <div class="mb-3">
+                <label class="form-label">Email</label>
+                <input type="email" class="form-control" name="email" required value="{{ user[1] if user else '' }}">
+            </div>
+
+            {% if action == 'Add' %}
+            <div class="mb-3">
+                <label class="form-label">Password</label>
+                <input type="text" class="form-control" name="password" required>
+            </div>
+            {% endif %}
+
+            <div class="mb-3">
+                <label class="form-label">Role</label>
+                <select class="form-select" name="role" required>
+                    {% for r in ['student', 'educator', 'admin'] %}
+                        <option value="{{ r }}" {% if user and user[2] == r %}selected{% endif %}>{{ r.title() }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <button type="submit" class="btn btn-primary">{{ action }}</button>
+        </form>
+    </div>
+</div>
+{% endblock %}
