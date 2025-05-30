@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% block title %}Forum - {{ thread_title }}{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h2 class="mb-4">{{ thread_title }}</h2>
+
+    <!-- Top-level post form -->
+    <form method="POST" class="mb-4">
+        <div class="mb-3">
+            <textarea class="form-control" name="content" placeholder="Start a new thread..." required></textarea>
+        </div>
+        <input type="hidden" name="parent_post_id" value="">
+        <button type="submit" class="btn btn-primary">Post</button>
+    </form>
+
+    <!-- Posts and Replies -->
+    <div class="forum-posts">
+        {% for post in posts %}
+            {% if not post.parent_post_id %}
+                <div class="card mb-3">
+                    <div class="card-body">
+                        <p class="mb-1"><strong>User {{ post.author_id }}</strong> said:</p>
+                        <p>{{ post.content }}</p>
+
+                        <!-- Reply form
+                        <form method="POST" class="mt-2">
+                            <input type="hidden" name="parent_post_id" value="{{ post.id }}">
+                            <textarea class="form-control mb-2" name="content" placeholder="Reply..." required></textarea>
+                            <button type="submit" class="btn btn-sm btn-secondary">Reply</button>
+                        </form> -->
+
+                        <!-- Replies -->
+                        {% for reply in posts %}
+                            {% if reply.parent_post_id == post.id %}
+                                <div class="card mt-3 ms-4 bg-light">
+                                    <div class="card-body p-2">
+                                        <p class="mb-1"><strong>User {{ reply.author_id }}</strong> replied:</p>
+                                        <p class="mb-0">{{ reply.content }}</p>
+                                    </div>
+                                </div>
+                            {% endif %}
+                        {% endfor %}
+                    </div>
+                </div>
+            {% endif %}
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}
