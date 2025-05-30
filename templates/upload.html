@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block title %}Upload Material{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="card p-4">
+        <h3 class="mb-3">Upload Material</h3>
+        <form method="post" enctype="multipart/form-data">
+            <div class="mb-3">
+                <label class="form-label">Title</label>
+                <input type="text" class="form-control" name="title" required>
+            </div>
+            <div>
+                <label class="form-label">Description</label>
+                <input type="text" class="form-control" name="description" required>
+            </div>
+            <div class="mb-3">
+                <label class="form-label">File</label>
+                <input type="file" class="form-control" name="file" required>
+            </div>
+            <button type="submit" class="btn btn-success">
+                <i class="fas fa-upload"></i> Upload
+            </button>
+        </form>
+    </div>
+</div>
+{% endblock %}
