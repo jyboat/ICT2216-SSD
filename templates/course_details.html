@@ -10,19 +10,22 @@
         </div>
     </div>
 
-    {% if role == 'educator' %}
     <div class="d-flex gap-3 mb-4">
+    {% if role in ['student', 'educator'] %}
         <a href="{{ url_for('course_forum', course_id=course_id) }}" class="btn btn-outline-primary">
             <i class="fas fa-comments"></i> Forum
         </a>
+    {% endif %}
+
+    {% if role == 'educator' %}
         <a href="{{ url_for('post_announcement', course_id=course_id) }}" class="btn btn-outline-warning">
             <i class="fas fa-bullhorn"></i> Post Announcement
         </a>
         <a href="{{ url_for('upload_material', course_id=course_id) }}" class="btn btn-outline-success">
             <i class="fas fa-upload"></i> Upload Material
         </a>
-    </div>
     {% endif %}
+    </div>
 
     <h4>Announcements</h4>
     <ul class="list-group mb-4">

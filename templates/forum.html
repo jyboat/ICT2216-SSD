@@ -20,23 +20,57 @@
             {% if not post.parent_post_id %}
                 <div class="card mb-3">
                     <div class="card-body">
-                        <p class="mb-1"><strong>User {{ post.author_id }}</strong> said:</p>
+                        <p class="mb-1"><strong>{{ post.author_name }}</strong> said on {{ post.posted_at.strftime('%b %d, %Y %I:%M %p') }}:</p>
                         <p>{{ post.content }}</p>
 
-                        <!-- Reply form
+                        {% if post.author_id == current_user_id or role == 'educator' %}
+                            {% if post.author_id == current_user_id %}
+                                <form method="GET" action="{{ url_for('edit_post', post_id=post.id) }}" class="d-inline">
+                                    <button class="btn btn-sm btn-outline-secondary">Edit</button>
+                                </form>
+                                <form method="POST" action="{{ url_for('delete_post', post_id=post.id) }}" class="d-inline">
+                                    <button class="btn btn-sm btn-outline-danger">Delete</button>
+                                </form>
+                            {% elif role == 'educator' %}
+                                <form method="POST" action="{{ url_for('delete_post', post_id=post.id) }}" class="d-inline">
+                                    <button class="btn btn-sm btn-outline-danger">Delete</button>
+                                </form>
+                            {% endif %}
+                        {% endif %}
+
+                        <!-- Educator Reply Form -->
+                        {% if role == 'educator' %}
                         <form method="POST" class="mt-2">
                             <input type="hidden" name="parent_post_id" value="{{ post.id }}">
                             <textarea class="form-control mb-2" name="content" placeholder="Reply..." required></textarea>
                             <button type="submit" class="btn btn-sm btn-secondary">Reply</button>
-                        </form> -->
+                        </form>
+                        {% endif %}
 
                         <!-- Replies -->
                         {% for reply in posts %}
                             {% if reply.parent_post_id == post.id %}
                                 <div class="card mt-3 ms-4 bg-light">
                                     <div class="card-body p-2">
-                                        <p class="mb-1"><strong>User {{ reply.author_id }}</strong> replied:</p>
+                                        <p class="mb-1"><strong>{{ reply.author_name }}</strong> replied on {{ reply.posted_at.strftime('%b %d, %Y %I:%M %p') }}:</p>
                                         <p class="mb-0">{{ reply.content }}</p>
+
+                                        {% if reply.author_id == current_user_id or role == 'educator' %}
+                                            {% if reply.author_id == current_user_id %}
+                                                <!-- Owner: Edit & Delete -->
+                                                <form method="GET" action="{{ url_for('edit_post', post_id=reply.id) }}" class="d-inline">
+                                                    <button class="btn btn-sm btn-outline-secondary">Edit</button>
+                                                </form>
+                                                <form method="POST" action="{{ url_for('delete_post', post_id=reply.id) }}" class="d-inline">
+                                                    <button class="btn btn-sm btn-outline-danger">Delete</button>
+                                                </form>
+                                            {% elif role == 'educator' %}
+                                                <!-- Educator: Delete only -->
+                                                <form method="POST" action="{{ url_for('delete_post', post_id=reply.id) }}" class="d-inline">
+                                                    <button class="btn btn-sm btn-outline-danger">Delete</button>
+                                                </form>
+                                            {% endif %}
+                                        {% endif %}
                                     </div>
                                 </div>
                             {% endif %}
