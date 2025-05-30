@@ -26,27 +26,34 @@
 
     <h4>Announcements</h4>
     <ul class="list-group mb-4">
-    {% for a in announcements %}
+        {% for a in announcements %}
         <li class="list-group-item">
             <strong>{{ a[0] }}</strong><br>{{ a[1] }}
         </li>
-    {% else %}
+        {% else %}
         <li class="list-group-item">No announcements yet.</li>
-    {% endfor %}
+        {% endfor %}
     </ul>
 
     <h4>Materials</h4>
     <ul class="list-group">
-    {% for material in materials %}
-        <li class="list-group-item d-flex justify-content-between align-items-center">
-            {{ material[1] }}
-            <a href="{{ url_for('download_material', material_id=material[0]) }}" class="btn btn-sm btn-outline-secondary">
-                <i class="fas fa-download"></i> Download
-            </a>
+        {% for material in materials %}
+        <li class="list-group-item">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <strong>{{ material[1] }}</strong>
+                    <p class="mb-1 text-muted">{{ material[2] }}</p> <!-- description -->
+                    <small class="text-muted">Uploaded on {{ material[3].strftime('%Y-%m-%d %H:%M') }}</small>
+                </div>
+                <a href="{{ url_for('download_material', material_id=material[0]) }}"
+                    class="btn btn-sm btn-outline-secondary">
+                    <i class="fas fa-download"></i> Download
+                </a>
+            </div>
         </li>
-    {% else %}
+        {% else %}
         <li class="list-group-item">No materials available.</li>
-    {% endfor %}
+        {% endfor %}
     </ul>
 </div>
 {% endblock %}
