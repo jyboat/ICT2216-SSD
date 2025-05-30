@@ -14,6 +14,15 @@ user_id = 1  # student
 # user_id = 3  # educator
 # user_id = 5  # admin
 
+# Helper function to check if educator role
+def is_educator(user_id):
+    cur = mysql.connection.cursor()
+    cur.execute("SELECT role FROM users WHERE id = %s", (user_id,))
+    role = cur.fetchone()[0]
+    cur.close()
+    return role == "educator"
+
+
 @app.route("/")
 def index():
     return render_template("index.html", hide_header=True)
@@ -302,6 +311,7 @@ def delete_announcement(course_id, announcement_id):
 @app.route("/courses/<int:course_id>/forum", methods=["GET", "POST"])
 def course_forum(course_id):
     cur = mysql.connection.cursor()
+
     cur.execute("SELECT name FROM users WHERE id = %s", (user_id,))
     user_name = cur.fetchone()[0]
     cur.execute("SELECT role FROM users WHERE id = %s", (user_id,))
@@ -312,36 +322,107 @@ def course_forum(course_id):
     elif role == "educator":
         cur.execute("SELECT 1 FROM courses WHERE id = %s AND educator_id = %s", (course_id, user_id))
     else:
-        allowed = None
+        cur.close()
+        return "Access denied", 403
 
-    allowed = cur.fetchone()
-    if not allowed:
+    if not cur.fetchone():
         cur.close()
         return "Access denied", 403
 
     if request.method == "POST":
         content = request.form["content"]
         parent_post_id = request.form.get("parent_post_id")
+
+        cur.execute("SELECT id FROM forum_threads WHERE course_id = %s LIMIT 1", (course_id,))
+        thread = cur.fetchone()
+
+        if not thread:
+            cur.execute("""
+                INSERT INTO forum_threads (course_id, author_id, title)
+                VALUES (%s, %s, %s)
+            """, (course_id, user_id, "General Discussion"))
+            mysql.connection.commit()
+            thread_id = cur.lastrowid
+        else:
+            thread_id = thread[0]
+
         cur.execute("""
-            INSERT INTO forum_posts (course_id, author_id, parent_post_id, content)
+            INSERT INTO forum_posts (thread_id, author_id, parent_post_id, content)
             VALUES (%s, %s, %s, %s)
-        """, (course_id, user_id, parent_post_id or None, content))
+        """, (thread_id, user_id, parent_post_id or None, content))
         mysql.connection.commit()
 
+    # Fetch all posts for this course’s threads
     cur.execute("""
-    SELECT id, content, author_id, parent_post_id, thread_id FROM forum_posts
-    WHERE thread_id IN (
-        SELECT id FROM forum_threads WHERE course_id = %s
-    )
-    ORDER BY posted_at
+        SELECT fp.id, fp.content, fp.author_id, fp.parent_post_id, fp.thread_id, fp.posted_at, u.name AS author_name
+        FROM forum_posts fp
+        JOIN users u ON fp.author_id = u.id
+        WHERE fp.thread_id IN (
+            SELECT id FROM forum_threads WHERE course_id = %s
+        )
+        ORDER BY fp.posted_at
     """, (course_id,))
 
     rows = cur.fetchall()
     columns = [col[0] for col in cur.description]
     posts = [dict(zip(columns, row)) for row in rows]
+
     cur.close()
 
-    return render_template("forum.html", posts=posts, course_id=course_id, role=role, user_name=user_name)
+    return render_template("forum.html", posts=posts, course_id=course_id, role=role,
+                           user_name=user_name, current_user_id=user_id)
+
+@app.route("/forum/posts/<int:post_id>/edit", methods=["GET", "POST"])
+def edit_post(post_id):
+    cur = mysql.connection.cursor()
+
+    cur.execute("SELECT author_id, content, thread_id FROM forum_posts WHERE id = %s", (post_id,))
+    result = cur.fetchone()
+    if not result:
+        cur.close()
+        return "Post not found", 404
+
+    author_id, content, thread_id = result
+
+    if author_id != user_id and not is_educator(user_id):
+        cur.close()
+        return "Access denied", 403
+
+    if request.method == "POST":
+        new_content = request.form["content"]
+        cur.execute("UPDATE forum_posts SET content = %s WHERE id = %s", (new_content, post_id))
+        mysql.connection.commit()
+
+        cur.execute("SELECT course_id FROM forum_threads WHERE id = %s", (thread_id,))
+        course_result = cur.fetchone()
+        cur.close()
+
+        if not course_result:
+            return "Course not found", 404
+
+        course_id = course_result[0]
+        return redirect(url_for("course_forum", course_id=course_id))
+
+    cur.close()
+    return render_template("edit_post.html", content=content, post_id=post_id)
+
+@app.route("/forum/posts/<int:post_id>/delete", methods=["POST"])
+def delete_post(post_id):
+    cur = mysql.connection.cursor()
+    cur.execute("SELECT author_id FROM forum_posts WHERE id = %s", (post_id,))
+    result = cur.fetchone()
+    if not result:
+        return "Post not found", 404
+
+    author_id = result[0]
+    if not is_educator(user_id):
+        return "Access denied", 403
+
+    cur.execute("DELETE FROM forum_posts WHERE id = %s", (post_id,))
+    mysql.connection.commit()
+    cur.close()
+    return redirect(request.referrer or url_for("home"))
+
 
 @app.route("/courses/<int:course_id>/announcement", methods=["GET", "POST"])
 def post_announcement(course_id):
