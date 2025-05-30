@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+
+{% block title %}StudyNest Portal{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+
+    <!-- Courses Section -->
+    <section class="bg-white p-4 rounded shadow-sm mb-5">
+        <h3 class="mb-4">My Courses</h3>
+
+        {% if courses %}
+            <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-3">
+                {% for id, code, name in courses %}
+                <div class="col">
+                    <a href="{{ url_for('view_course', course_id=id) }}" class="text-decoration-none text-dark">
+                        <div class="card h-100 border-0 shadow-sm hover-shadow">
+                            <img src="https://picsum.photos/seed/{{ code }}/400/200"
+                                 class="card-img-top rounded-top" alt="Course Image">
+                            <div class="card-body">
+                                <h5 class="card-title">{{ code }} - {{ name }}</h5>
+                            </div>
+                        </div>
+                    </a>
+                </div>
+                {% endfor %}
+            </div>
+        {% else %}
+            <p class="text-muted">You are not enrolled in any courses yet.</p>
+        {% endif %}
+    </section>
+
+    {% if role == 'student' %}
+    <section class="bg-light p-4 rounded shadow-sm mt-4">
+        <h4 class="mb-3">Latest Announcements</h4>
+        {% if announcements %}
+            <div style="max-height: 250px; overflow-y: auto;">
+                <ul class="list-group">
+                    {% for title, content, posted_at, course_name in announcements %}
+                    <li class="list-group-item">
+                        <strong>{{ title }}</strong> <span class="text-muted">({{ course_name }} – {{ posted_at }})</span>
+                        <p class="mb-0">{{ content }}</p>
+                    </li>
+                    {% endfor %}
+                </ul>
+            </div>
+        {% else %}
+            <p class="text-muted">No announcements yet.</p>
+        {% endif %}
+    </section>
+    {% endif %}
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.getElementById("logOutBtn")?.addEventListener("click", () => {
+        window.location.href = "/";
+    });
+</script>
+{% endblock %}
