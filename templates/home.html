@@ -38,7 +38,7 @@
                 <ul class="list-group">
                     {% for title, content, posted_at, course_name in announcements %}
                     <li class="list-group-item">
-                        <strong>{{ title }}</strong> <span class="text-muted">({{ course_name }} – {{ posted_at }})</span>
+                        <strong>{{ title }}</strong> <span class="text-muted">({{ course_name }} – {{ posted_at.strftime('%b %d, %Y %I:%M %p') }})</span>
                         <p class="mb-0">{{ content }}</p>
                     </li>
                     {% endfor %}

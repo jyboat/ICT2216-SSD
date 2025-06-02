@@ -56,7 +56,7 @@
                 <div>
                     <strong>{{ material[1] }}</strong>
                     <p class="mb-1 text-muted">{{ material[2] }}</p>
-                    <small class="text-muted">Uploaded on {{ material[3].strftime('%Y-%m-%d %H:%M') }}</small>
+                    <small class="text-muted">Uploaded on {{ material[3].strftime('%b %d, %Y %I:%M %p') }}</small>
                 </div>
                 <div class="btn-group">
                     <a href="{{ url_for('download_material', material_id=material[0]) }}"
