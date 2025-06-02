@@ -1,84 +1,76 @@
 {% extends "base.html" %}
-{% block title %}Forum - {{ thread_title }}{% endblock %}
+{% block title %}Forum - Discussion{% endblock %}
 
 {% block content %}
-<div class="container">
-    <h2 class="mb-4">{{ thread_title }}</h2>
+    <div class="container">
+        <h2 class="mb-4">Discussion</h2>
 
-    <!-- Top-level post form -->
-    <form method="POST" class="mb-4">
-        <div class="mb-3">
-            <textarea class="form-control" name="content" placeholder="Start a new thread..." required></textarea>
-        </div>
-        <input type="hidden" name="parent_post_id" value="">
-        <button type="submit" class="btn btn-primary">Post</button>
-    </form>
+        <!-- New thread form -->
+        <form method="POST" class="mb-4">
+            <div class="mb-3">
+                <textarea class="form-control" name="content" placeholder="Start a new thread..." required></textarea>
+            </div>
+            <input type="hidden" name="parent_post_id" value="">
+            <button type="submit" class="btn btn-primary">Post</button>
+        </form>
 
-    <!-- Posts and Replies -->
-    <div class="forum-posts">
-        {% for post in posts %}
-            {% if not post.parent_post_id %}
-                <div class="card mb-3">
-                    <div class="card-body">
-                        <p class="mb-1"><strong>{{ post.author_name }}</strong> said on {{ post.posted_at.strftime('%b %d, %Y %I:%M %p') }}:</p>
-                        <p>{{ post.content }}</p>
+        <!-- Post rendering block -->
+        <div class="forum-posts">
+            {% macro render_post(post, posts, current_user_id, role, level=0) %}
+                <div class="card mt-3 {% if level > 0 %}ms-{{ level|int * 4 }}{% endif %} {% if level > 0 %}bg-light{% endif %}">
+                    <div class="card-body p-2">
+                        <p class="mb-1">
+                            <strong>{{ post.author_name }}</strong>
+                            {% if post.parent_post_id %}replied{% else %}said{% endif %}
+                            on {{ post.posted_at.strftime('%b %d, %Y %I:%M %p') }}:
+                        </p>
+                        <p class="mb-1">{{ post.content }}</p>
 
+                        {% if post.author_id == current_user_id %}
+                            <!-- Only authors can edit -->
+                            <form method="GET" action="{{ url_for('edit_post', post_id=post.id) }}" class="d-inline">
+                                <button class="btn btn-sm btn-outline-secondary">Edit</button>
+                            </form>
+                        {% endif %}
                         {% if post.author_id == current_user_id or role == 'educator' %}
-                            {% if post.author_id == current_user_id %}
-                                <form method="GET" action="{{ url_for('edit_post', post_id=post.id) }}" class="d-inline">
-                                    <button class="btn btn-sm btn-outline-secondary">Edit</button>
-                                </form>
-                                <form method="POST" action="{{ url_for('delete_post', post_id=post.id) }}" class="d-inline">
-                                    <button class="btn btn-sm btn-outline-danger">Delete</button>
-                                </form>
-                            {% elif role == 'educator' %}
-                                <form method="POST" action="{{ url_for('delete_post', post_id=post.id) }}" class="d-inline">
-                                    <button class="btn btn-sm btn-outline-danger">Delete</button>
-                                </form>
-                            {% endif %}
+                            <!-- Authors or educators can delete -->
+                            <form method="POST" action="{{ url_for('delete_post', post_id=post.id) }}" class="d-inline" onsubmit="return confirm('Are you sure you want to delete this post?');">
+                                <button class="btn btn-sm btn-outline-danger">Delete</button>
+                            </form>
                         {% endif %}
 
-                        <!-- Educator Reply Form -->
-                        {% if role == 'educator' %}
-                        <form method="POST" class="mt-2">
-                            <input type="hidden" name="parent_post_id" value="{{ post.id }}">
-                            <textarea class="form-control mb-2" name="content" placeholder="Reply..." required></textarea>
-                            <button type="submit" class="btn btn-sm btn-secondary">Reply</button>
-                        </form>
+                        {% if role == 'educator' or posts_dict[post.parent_post_id|default(0)] == current_user_id or post.parent_post_id is none and post.author_id == current_user_id %}
+                            <button class="btn btn-sm btn-outline-primary toggle-reply mt-1" data-target="reply-form-{{ post.id }}">Reply</button>
+                            <form method="POST" id="reply-form-{{ post.id }}" class="mt-2 d-none">
+                                <input type="hidden" name="parent_post_id" value="{{ post.id }}">
+                                <textarea class="form-control mb-2" name="content" placeholder="Reply..." required></textarea>
+                                <button type="submit" class="btn btn-sm btn-secondary">Submit Reply</button>
+                            </form>
                         {% endif %}
 
-                        <!-- Replies -->
-                        {% for reply in posts %}
-                            {% if reply.parent_post_id == post.id %}
-                                <div class="card mt-3 ms-4 bg-light">
-                                    <div class="card-body p-2">
-                                        <p class="mb-1"><strong>{{ reply.author_name }}</strong> replied on {{ reply.posted_at.strftime('%b %d, %Y %I:%M %p') }}:</p>
-                                        <p class="mb-0">{{ reply.content }}</p>
-
-                                        {% if reply.author_id == current_user_id or role == 'educator' %}
-                                            {% if reply.author_id == current_user_id %}
-                                                <!-- Owner: Edit & Delete -->
-                                                <form method="GET" action="{{ url_for('edit_post', post_id=reply.id) }}" class="d-inline">
-                                                    <button class="btn btn-sm btn-outline-secondary">Edit</button>
-                                                </form>
-                                                <form method="POST" action="{{ url_for('delete_post', post_id=reply.id) }}" class="d-inline">
-                                                    <button class="btn btn-sm btn-outline-danger">Delete</button>
-                                                </form>
-                                            {% elif role == 'educator' %}
-                                                <!-- Educator: Delete only -->
-                                                <form method="POST" action="{{ url_for('delete_post', post_id=reply.id) }}" class="d-inline">
-                                                    <button class="btn btn-sm btn-outline-danger">Delete</button>
-                                                </form>
-                                            {% endif %}
-                                        {% endif %}
-                                    </div>
-                                </div>
-                            {% endif %}
+                        {% for child in posts if child.parent_post_id == post.id %}
+                            {{ render_post(child, posts, current_user_id, role, level + 1) }}
                         {% endfor %}
                     </div>
                 </div>
-            {% endif %}
-        {% endfor %}
+            {% endmacro %}
+
+            {% for post in posts if not post.parent_post_id %}
+                {{ render_post(post, posts, current_user_id, role) }}
+            {% endfor %}
+        </div>
     </div>
-</div>
+
+
+<script>
+    document.addEventListener("DOMContentLoaded", function () {
+        document.querySelectorAll('.toggle-reply').forEach(button => {
+            button.addEventListener('click', () => {
+                const form = document.getElementById(button.dataset.target);
+                form.classList.toggle('d-none');
+            });
+        });
+    });
+</script>
 {% endblock %}
+

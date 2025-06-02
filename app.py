@@ -400,11 +400,12 @@ def course_forum(course_id):
     rows = cur.fetchall()
     columns = [col[0] for col in cur.description]
     posts = [dict(zip(columns, row)) for row in rows]
+    posts_dict = {post["id"]: post["author_id"] for post in posts}
 
     cur.close()
 
     return render_template("forum.html", posts=posts, course_id=course_id, role=role,
-                           user_name=user_name, current_user_id=user_id)
+                           user_name=user_name, current_user_id=user_id, posts_dict=posts_dict)
 
 @app.route("/forum/posts/<int:post_id>/edit", methods=["GET", "POST"])
 def edit_post(post_id):
@@ -448,10 +449,12 @@ def delete_post(post_id):
     cur.execute("SELECT author_id FROM forum_posts WHERE id = %s", (post_id,))
     result = cur.fetchone()
     if not result:
+        cur.close()
         return "Post not found", 404
 
     author_id = result[0]
-    if not is_educator(user_id):
+    if user_id != author_id and not is_educator(user_id):
+        cur.close()
         return "Access denied", 403
 
     cur.execute("DELETE FROM forum_posts WHERE id = %s", (post_id,))
