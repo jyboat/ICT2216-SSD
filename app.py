@@ -31,9 +31,7 @@ def is_session_expired():
 
 # TODO: consider wrapping repeated code in reusable helper functions
 # TODO: replace with dynamic user id upon login
-# user_id = 1  # student
-# user_id = 3  # educator
-# user_id = 5  # admin
+
 
 # Helper function to check if educator role
 def is_educator(user_id):
@@ -43,6 +41,9 @@ def is_educator(user_id):
     cur.close()
     return role == "educator"
 
+# Helper function to repeatedly get user_id
+def get_current_user_id():
+    return session.get('user_id')
 
 @app.route("/")
 def index():
@@ -102,6 +103,7 @@ def home():
 
 @app.route("/materials/<int:material_id>/download")
 def download_material(material_id):
+    user_id = get_current_user_id()
     cur = mysql.connection.cursor()
     cur.execute("SELECT role FROM users WHERE id = %s", (user_id,))
     role = cur.fetchone()[0]
@@ -144,6 +146,7 @@ def download_material(material_id):
 
 @app.route("/materials/<int:material_id>/edit", methods=["GET", "POST"])
 def edit_material(material_id):
+    user_id = get_current_user_id()
     cur = mysql.connection.cursor()
 
     # Fetch existing data
@@ -202,6 +205,7 @@ def edit_material(material_id):
 
 @app.route("/materials/<int:material_id>/delete", methods=["POST"])
 def delete_material(material_id):
+    user_id = get_current_user_id()
     cur = mysql.connection.cursor()
 
     # Confirm ownership and get course_id for redirect
@@ -223,6 +227,7 @@ def delete_material(material_id):
 
 @app.route("/courses/<int:course_id>/upload", methods=["GET", "POST"])
 def upload_material(course_id):
+    user_id = get_current_user_id()
     cur = mysql.connection.cursor()
     
     # Get current user info
@@ -272,6 +277,7 @@ def upload_material(course_id):
 
 @app.route("/courses/<int:course_id>")
 def view_course(course_id):
+    user_id = get_current_user_id()
     cur = mysql.connection.cursor()
 
     cur.execute("SELECT name FROM users WHERE id = %s", (user_id,))
@@ -313,6 +319,7 @@ def view_course(course_id):
 
 @app.route("/courses/<int:course_id>/announcement/<int:announcement_id>/delete", methods=["POST"])
 def delete_announcement(course_id, announcement_id):
+    user_id = get_current_user_id()
     cur = mysql.connection.cursor()
 
     # Verify that this educator owns the course
@@ -336,6 +343,7 @@ def delete_announcement(course_id, announcement_id):
 
 @app.route("/courses/<int:course_id>/forum", methods=["GET", "POST"])
 def course_forum(course_id):
+    user_id = get_current_user_id()
     cur = mysql.connection.cursor()
 
     cur.execute("SELECT name FROM users WHERE id = %s", (user_id,))
@@ -400,6 +408,7 @@ def course_forum(course_id):
 
 @app.route("/forum/posts/<int:post_id>/edit", methods=["GET", "POST"])
 def edit_post(post_id):
+    user_id = get_current_user_id()
     cur = mysql.connection.cursor()
 
     cur.execute("SELECT author_id, content, thread_id FROM forum_posts WHERE id = %s", (post_id,))
@@ -434,6 +443,7 @@ def edit_post(post_id):
 
 @app.route("/forum/posts/<int:post_id>/delete", methods=["POST"])
 def delete_post(post_id):
+    user_id = get_current_user_id()
     cur = mysql.connection.cursor()
     cur.execute("SELECT author_id FROM forum_posts WHERE id = %s", (post_id,))
     result = cur.fetchone()
@@ -452,6 +462,7 @@ def delete_post(post_id):
 
 @app.route("/courses/<int:course_id>/announcement", methods=["GET", "POST"])
 def post_announcement(course_id):
+    user_id = get_current_user_id()
     cur = mysql.connection.cursor()
     cur.execute("SELECT role FROM users WHERE id = %s", (user_id,))
     role = cur.fetchone()[0]
@@ -481,6 +492,7 @@ def post_announcement(course_id):
 
 @app.route("/admin/users")
 def manage_users():
+    user_id = get_current_user_id()
     cur = mysql.connection.cursor()
     cur.execute("SELECT name FROM users WHERE id = %s", (user_id,))
     user_name = cur.fetchone()[0]
@@ -491,6 +503,7 @@ def manage_users():
 
 @app.route("/admin/users/add", methods=["GET", "POST"])
 def add_user():
+    user_id = get_current_user_id()
     cur = mysql.connection.cursor()
     cur.execute("SELECT name FROM users WHERE id = %s", (user_id,))
     user_name = cur.fetchone()[0]
@@ -515,6 +528,7 @@ def add_user():
 
 @app.route("/admin/users/<int:user_id>/edit", methods=["GET", "POST"])
 def edit_user(user_id):
+    user_id = get_current_user_id()
     cur = mysql.connection.cursor()
     cur.execute("SELECT name FROM users WHERE id = %s", (user_id,))
     user_name = cur.fetchone()[0]
@@ -542,6 +556,7 @@ def edit_user(user_id):
 
 @app.route("/admin/users/<int:user_id>/delete", methods=["POST"])
 def delete_user(user_id):
+    user_id = get_current_user_id()
     cur = mysql.connection.cursor()
     cur.execute("DELETE FROM users WHERE id = %s", (user_id,))
     mysql.connection.commit()
