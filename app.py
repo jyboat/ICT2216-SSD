@@ -233,6 +233,45 @@ def delete_material(material_id):
     return redirect(url_for("view_course", course_id=course_id))
 
 
+@app.route("/courses/<int:course_id>/announcement/<int:announcement_id>/edit", methods=["GET", "POST"])
+def edit_announcement(course_id, announcement_id):
+    user_id = get_current_user_id()
+    cur = mysql.connection.cursor()
+
+    # Check if this user is the educator for the course
+    cur.execute("""
+        SELECT a.title, a.content
+        FROM announcements a
+        JOIN courses c ON a.course_id = c.id
+        WHERE a.id = %s AND c.id = %s AND c.educator_id = %s
+    """, (announcement_id, course_id, user_id))
+
+    result = cur.fetchone()
+    if not result:
+        cur.close()
+        abort(403, description="Access denied or announcement not found")
+
+    current_title, current_content = result
+
+    if request.method == "POST":
+        new_title = request.form["title"].strip()
+        new_content = request.form["content"].strip()
+
+        cur.execute("""
+            UPDATE announcements
+            SET title = %s, content = %s
+            WHERE id = %s
+        """, (new_title, new_content, announcement_id))
+        mysql.connection.commit()
+        cur.close()
+
+        return redirect(url_for("view_course", course_id=course_id))
+
+    cur.close()
+    return render_template("edit_announcement.html", title=current_title, content=current_content,
+                           course_id=course_id, announcement_id=announcement_id)
+
+
 @app.route("/courses/<int:course_id>/upload", methods=["GET", "POST"])
 def upload_material(course_id):
     user_id = get_current_user_id()

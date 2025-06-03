@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+
+{% block title %}Edit Announcement{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <h2>Edit Announcement</h2>
+    <form method="POST">
+        <div class="mb-3">
+            <label for="title" class="form-label">Title</label>
+            <input type="text" class="form-control" id="title" name="title" value="{{ title }}" required>
+        </div>
+        <div class="mb-3">
+            <label for="content" class="form-label">Content</label>
+            <textarea class="form-control" id="content" name="content" rows="4" required>{{ content }}</textarea>
+        </div>
+        <button type="submit" class="btn btn-primary">Update</button>
+        <a href="{{ url_for('view_course', course_id=course_id) }}" class="btn btn-secondary">Cancel</a>
+    </form>
+</div>
+{% endblock %}
