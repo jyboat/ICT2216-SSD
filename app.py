@@ -5,6 +5,8 @@ import os
 from flask_mysqldb import MySQL
 from flask_bcrypt import Bcrypt
 from datetime import timedelta
+import bleach
+import re
 import time
 
 load_dotenv()  # Load environment variables from .env
@@ -376,7 +378,17 @@ def course_forum(course_id):
         abort(403, description="Access denied")
 
     if request.method == "POST":
-        content = request.form["content"]
+        content = request.form["content"].strip()
+
+        # Validate length and reject patterns
+        if not content or len(content) > 1000:
+            abort(400, description="Invalid content")
+        # simple regex to catch script injection attempts
+        if re.search(r'<\s*script|on\w+\s*=|javascript:', content, re.IGNORECASE):
+            abort(400, description="Malicious input blocked")
+        # Sanitize
+        content = bleach.clean(content, tags=[], attributes={}, strip=True)
+
         parent_post_id = request.form.get("parent_post_id")
 
         cur.execute("SELECT id FROM forum_threads WHERE course_id = %s LIMIT 1", (course_id,))
