@@ -1,5 +1,5 @@
 from dotenv import load_dotenv
-from flask import Flask, render_template, request, redirect, url_for, send_from_directory, session, Response, make_response
+from flask import Flask, render_template, request, redirect, url_for, send_from_directory, session, Response, make_response, abort
 from werkzeug.utils import secure_filename
 import os
 from flask_mysqldb import MySQL
@@ -122,11 +122,11 @@ def download_material(material_id):
         """, (material_id, user_id))
     else:
         cur.close()
-        return "Access denied", 403
+        abort(403, description="Access denied")
 
     if not cur.fetchone():
         cur.close()
-        return "Access denied", 403
+        abort(403, description="Access denied")
 
     # Fetch file and metadata
     cur.execute("SELECT file_name, mime_type, file FROM materials WHERE id = %s", (material_id,))
@@ -134,7 +134,7 @@ def download_material(material_id):
     cur.close()
 
     if not result:
-        return "Material not found", 404
+        abort(404, description="Materials not found")
 
     file_name, mime_type, file_data = result
 
@@ -159,7 +159,7 @@ def edit_material(material_id):
 
     if not material:
         cur.close()
-        return "Access denied or material not found", 403
+        abort(403, description="Access denied or Materials not found")
 
     course_id, current_title, current_desc, current_filename, current_mime = material
 
@@ -214,7 +214,7 @@ def delete_material(material_id):
 
     if not result:
         cur.close()
-        return "Access denied or material not found", 403
+        abort(403, description="Access denied or Materials not found")
 
     course_id = result[0]
 
@@ -235,22 +235,34 @@ def upload_material(course_id):
     user = cur.fetchone()
     if not user:
         cur.close()
-        return "User not found", 404
+        abort(404, description="User not found")
 
     user_name, role = user
+
+    # Only allow educators to upload
+    if role != "educator":
+        cur.close()
+        abort(403, description="Access denied: only educators can upload materials")
+
     cur.close()
 
     if request.method == "POST":
         # Get uploaded file
         uploaded_file = request.files["file"]
-        if uploaded_file.filename == "":
-            return "No file selected", 400
+        if not uploaded_file or uploaded_file.filename == "":
+            abort(400, description="No File Selected")
 
         # Sanitize and extract file metadata
-        title = request.form["title"]
-        description = request.form["description"]
+
         filename = secure_filename(uploaded_file.filename)
         mime_type = uploaded_file.mimetype
+
+        if not filename.lower().endswith(".pdf") or mime_type != "application/pdf":
+            abort(400, description="Only PDF files are allowed")
+
+
+        title = request.form["title"]
+        description = request.form["description"]
         file_data = uploaded_file.read()
 
         # Verify user permission
@@ -260,7 +272,7 @@ def upload_material(course_id):
 
         if not allowed:
             cur.close()
-            return "Access denied", 403
+            abort(403, description="Access denied")
 
         # Insert into database
         cur.execute("""
@@ -310,7 +322,7 @@ def view_course(course_id):
     allowed = cur.fetchone()
     if not allowed:
         cur.close()
-        return "Access denied", 403
+        abort(403, description="Access denied")
 
     cur.close()
     return render_template("course_details.html", course=course, materials=materials,
@@ -332,7 +344,7 @@ def delete_announcement(course_id, announcement_id):
 
     if not cur.fetchone():
         cur.close()
-        return "Access denied", 403
+        abort(403, description="Access denied")
 
     cur.execute("DELETE FROM announcements WHERE id = %s", (announcement_id,))
     mysql.connection.commit()
@@ -357,11 +369,11 @@ def course_forum(course_id):
         cur.execute("SELECT 1 FROM courses WHERE id = %s AND educator_id = %s", (course_id, user_id))
     else:
         cur.close()
-        return "Access denied", 403
+        abort(403, description="Access denied")
 
     if not cur.fetchone():
         cur.close()
-        return "Access denied", 403
+        abort(403, description="Access denied")
 
     if request.method == "POST":
         content = request.form["content"]
@@ -416,13 +428,13 @@ def edit_post(post_id):
     result = cur.fetchone()
     if not result:
         cur.close()
-        return "Post not found", 404
+        abort(404, description="Post not found")
 
     author_id, content, thread_id = result
 
     if author_id != user_id and not is_educator(user_id):
         cur.close()
-        return "Access denied", 403
+        abort(403, description="Access denied")
 
     if request.method == "POST":
         new_content = request.form["content"]
@@ -434,7 +446,7 @@ def edit_post(post_id):
         cur.close()
 
         if not course_result:
-            return "Course not found", 404
+            abort(404, description="Course not found")
 
         course_id = course_result[0]
         return redirect(url_for("course_forum", course_id=course_id))
@@ -450,12 +462,12 @@ def delete_post(post_id):
     result = cur.fetchone()
     if not result:
         cur.close()
-        return "Post not found", 404
+        abort(404, description="Post not found")
 
     author_id = result[0]
     if user_id != author_id and not is_educator(user_id):
         cur.close()
-        return "Access denied", 403
+        abort(403, description="Access denied")
 
     cur.execute("DELETE FROM forum_posts WHERE id = %s", (post_id,))
     mysql.connection.commit()
@@ -480,7 +492,7 @@ def post_announcement(course_id):
         allowed = cur.fetchone()
         if not allowed:
             cur.close()
-            return "Access denied", 403
+            abort(403, description="Access denied")
 
         cur.execute("""
             INSERT INTO announcements (course_id, author_id, title, content)
