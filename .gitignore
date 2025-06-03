@@ -177,4 +177,4 @@ cython_debug/
 .idea
 
 # logging.txt
-.txt
+logs.txt
