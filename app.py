@@ -519,6 +519,8 @@ def post_announcement(course_id):
 
 @app.route("/admin/users")
 def manage_users():
+    if session.get('role') != 'admin':
+        abort(403, description="Admin access required")
     user_id = get_current_user_id()
     cur = mysql.connection.cursor()
     cur.execute("SELECT name FROM users WHERE id = %s", (user_id,))
@@ -530,6 +532,8 @@ def manage_users():
 
 @app.route("/admin/users/add", methods=["GET", "POST"])
 def add_user():
+    if session.get('role') != 'admin':
+        abort(403, description="Admin access required")
     user_id = get_current_user_id()
     cur = mysql.connection.cursor()
     cur.execute("SELECT name FROM users WHERE id = %s", (user_id,))
@@ -555,6 +559,8 @@ def add_user():
 
 @app.route("/admin/users/<int:user_id>/edit", methods=["GET", "POST"])
 def edit_user(user_id):
+    if session.get('role') != 'admin':
+        abort(403, description="Admin access required")
     user_id = get_current_user_id()
     cur = mysql.connection.cursor()
     cur.execute("SELECT name FROM users WHERE id = %s", (user_id,))
@@ -583,6 +589,8 @@ def edit_user(user_id):
 
 @app.route("/admin/users/<int:user_id>/delete", methods=["POST"])
 def delete_user(user_id):
+    if session.get('role') != 'admin':
+        abort(403, description="Admin access required")
     user_id = get_current_user_id()
     cur = mysql.connection.cursor()
     cur.execute("DELETE FROM users WHERE id = %s", (user_id,))
