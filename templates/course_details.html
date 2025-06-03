@@ -28,31 +28,35 @@
     </div>
 
     <h4>Announcements</h4>
-    <ul class="list-group mb-4">
-        {% for a in announcements %}
-        <li class="list-group-item d-flex justify-content-between align-items-start">
-            <div>
-                <strong>{{ a[0] }}</strong><br>{{ a[1] }}
-            </div>
-            {% if role == 'educator' %}
-            <div class="btn-group ms-3 gap-2" role="group" aria-label="Announcement actions">
-                <form action="{{ url_for('delete_announcement', course_id=course_id, announcement_id=a[2]) }}"
-                    method="POST" onsubmit="return confirm('Delete this announcement?');" style="margin: 0;">
-                    <button type="submit" class="btn btn-sm btn-outline-danger" aria-label="Delete">
-                        <i class="fas fa-trash"></i>
-                    </button>
-                </form>
-                <a href="{{ url_for('edit_announcement', course_id=course_id, announcement_id=a[2]) }}"
-                class="btn btn-sm btn-outline-secondary" aria-label="Edit">
-                    <i class="fas fa-edit"></i>
-                </a>
-            </div>
-            {% endif %}
-        </li>
-        {% else %}
-        <li class="list-group-item">No announcements yet.</li>
-        {% endfor %}
-    </ul>
+    <div style="max-height: 300px; overflow-y: auto;">
+        <ul class="list-group mb-4">
+            {% for a in announcements %}
+            <li class="list-group-item d-flex justify-content-between align-items-start">
+                <div>
+                    <strong>{{ a[0] }}</strong>
+                    <small class="text-muted d-block mb-1">{{ a[3].strftime('%b %d, %Y %I:%M %p') }}</small>
+                    <p class="mb-0" style="white-space: pre-wrap;">{{ a[1] }}</p>
+                </div>
+                {% if role == 'educator' %}
+                <div class="btn-group ms-3 gap-2" role="group" aria-label="Announcement actions">
+                    <form action="{{ url_for('delete_announcement', course_id=course_id, announcement_id=a[2]) }}"
+                        method="POST" onsubmit="return confirm('Delete this announcement?');" style="margin: 0;">
+                        <button type="submit" class="btn btn-sm btn-outline-danger" aria-label="Delete">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </form>
+                    <a href="{{ url_for('edit_announcement', course_id=course_id, announcement_id=a[2]) }}"
+                    class="btn btn-sm btn-outline-secondary" aria-label="Edit">
+                        <i class="fas fa-edit"></i>
+                    </a>
+                </div>
+                {% endif %}
+            </li>
+            {% else %}
+            <li class="list-group-item">No announcements yet.</li>
+            {% endfor %}
+        </ul>
+    </div>
 
 
     <h4>Materials</h4>

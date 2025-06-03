@@ -353,7 +353,7 @@ def view_course(course_id):
     """, (course_id,))
     materials = cur.fetchall()
 
-    cur.execute("SELECT title, content, id FROM announcements WHERE course_id = %s ORDER BY posted_at DESC", (course_id,))
+    cur.execute("SELECT title, content, id, posted_at FROM announcements WHERE course_id = %s ORDER BY posted_at DESC", (course_id,))
     announcements = cur.fetchall()
 
     cur.execute("SELECT role FROM users WHERE id = %s", (user_id,))
