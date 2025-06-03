@@ -1,12 +1,14 @@
 from dotenv import load_dotenv
 from flask import Flask, render_template, request, redirect, url_for, send_from_directory, session, Response, make_response, abort
 from werkzeug.utils import secure_filename
+from collections import defaultdict
 import os
 from flask_mysqldb import MySQL
 from flask_bcrypt import Bcrypt
 from datetime import timedelta
 import bleach
 import re
+import logging
 import time
 
 load_dotenv()  # Load environment variables from .env
@@ -19,6 +21,11 @@ bcrypt = Bcrypt(app)
 
 # session timeout
 app.permanent_session_lifetime = timedelta(minutes=15)
+
+# key: IP, value: list of timestamps
+login_attempts = defaultdict(list)
+BLOCK_THRESHOLD = 5
+BLOCK_WINDOW = 600  # seconds
 
 # function to check if session has expired
 def is_session_expired():
@@ -33,7 +40,6 @@ def is_session_expired():
 
 # TODO: consider wrapping repeated code in reusable helper functions
 # TODO: replace with dynamic user id upon login
-
 
 # Helper function to check if educator role
 def is_educator(user_id):
@@ -601,6 +607,21 @@ def delete_user(user_id):
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
+        ip = request.remote_addr
+        now = time.time()
+
+        # Clean old attempts
+        login_attempts[ip] = [t for t in login_attempts[ip] if now - t < BLOCK_WINDOW]
+
+        # Append the current attempt *before* checking threshold
+        login_attempts[ip].append(now)
+
+        # Block if too many attempts
+        if len(login_attempts[ip]) >= BLOCK_THRESHOLD:
+            suspicious_logger.warning(f"Blocked login - too many attempts - IP: {ip}")
+            return render_template("login.html", error="Too many failed attempts. Try again later.", hide_header=True)
+
+        # Otherwise, Continue with login attempt
         email = request.form['email']
         password = request.form['password']
 
@@ -616,7 +637,12 @@ def login():
                 session['user_name'] = user[1]
                 session['role'] = user[4]
                 session['last_active'] = time.time()
+                login_attempts[ip] = [] # Login Success; clear failed attempts
                 return redirect(url_for('home'))
+            else:
+                suspicious_logger.warning(f"Failed login (wrong password) - email: {email}, IP: {request.remote_addr}")
+        else:
+            suspicious_logger.warning(f"Failed login (no such user) - email: {email}, IP: {request.remote_addr}")
 
     return render_template("login.html", error="Invalid email or password", hide_header=True)
 
@@ -661,10 +687,37 @@ def logout():
     session.clear()
     return redirect(url_for('index'))
 
+@app.errorhandler(403)
+def forbidden(e):
+    user_id = session.get('user_id', 'Unauthenticated')
+    suspicious_logger.warning(f"403 Forbidden - user_id: {user_id}, IP: {request.remote_addr}, path: {request.path}")
+    return render_template("error.html", error=e), 403
+
+@app.errorhandler(404)
+def not_found(e):
+    user_id = session.get('user_id', 'Unauthenticated')
+    suspicious_logger.warning(f"404 Not Found - user_id: {user_id}, IP: {request.remote_addr}, path: {request.path}")
+    return render_template("error.html", error=e), 404
+
+@app.errorhandler(400)
+def bad_request(e):
+    user_id = session.get('user_id', 'Unauthenticated')
+    suspicious_logger.warning(f"400 Bad Request - user_id: {user_id}, IP: {request.remote_addr}, path: {request.path}")
+    return render_template("error.html", error=e), 400
+
 app.config['MYSQL_HOST'] = os.getenv('MYSQL_HOST')
 app.config['MYSQL_USER'] = os.getenv('MYSQL_USER')
 app.config['MYSQL_PASSWORD'] = os.getenv('MYSQL_PASSWORD')
 app.config['MYSQL_DB'] = os.getenv('MYSQL_DB')
+
+# Create a custom logger for suspicious activity
+suspicious_logger = logging.getLogger("suspicious")
+suspicious_logger.setLevel(logging.INFO)
+file_handler = logging.FileHandler("logs.txt")
+file_handler.setLevel(logging.INFO)
+formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
+file_handler.setFormatter(formatter)
+suspicious_logger.addHandler(file_handler)
 
 mysql = MySQL(app)
 
