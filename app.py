@@ -695,22 +695,22 @@ def register():
 
         # check for empty fields
         if not name or not email or not password or not confirm_password:
-            return render_template("register.html", error="All fields are required")
+            return render_template("register.html", error="All fields are required", hide_header=True)
 
         # check that both password fields are the same
         if password != confirm_password:
-            return render_template("register.html", error="Passwords do not match")
+            return render_template("register.html", error="Passwords do not match", hide_header=True)
 
         # check if email already exists
         cur = mysql.connection.cursor()
         cur.execute("SELECT * FROM users WHERE email = %s", (email,))
         existing_user = cur.fetchone()
         if existing_user:
-            return render_template("register.html", error="An account with that email already exists")
+            return render_template("register.html", error="An account with that email already exists", hide_header=True)
 
         # check if password is at least 8 characters
         if len(password) < 8:
-            return render_template("register.html", error="Password must be at least 8 characters")
+            return render_template("register.html", error="Password must be at least 8 characters", hide_header=True)
 
         hashed_pw = bcrypt.generate_password_hash(password).decode('utf-8')
         cur.execute("INSERT INTO users (name, email, password_hash) VALUES (%s, %s, %s)",
@@ -719,7 +719,7 @@ def register():
 
         return redirect(url_for('index', success='1'))
 
-    return render_template("register.html")
+    return render_template("register.html", hide_header=True)
 
 @app.route("/logout")
 def logout():
