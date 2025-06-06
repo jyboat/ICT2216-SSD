@@ -67,6 +67,9 @@ def home():
     user_name = session['user_name']
     role = session['role']
 
+    if role == "admin":
+        return redirect(url_for("manage_users"))
+
     cur = mysql.connection.cursor()
 
     announcements = []  
