@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Setup Two-Factor Authentication</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            padding: 40px;
+            background-color: #f9f9f9;
+        }
+        .container {
+            display: inline-block;
+            background: #fff;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 0 15px rgba(0, 0, 0, 0.1);
+        }
+        img.qr {
+            width: 200px;
+            height: 200px;
+            margin: 20px 0;
+        }
+        button {
+            padding: 10px 20px;
+            background-color: #007BFF;
+            border: none;
+            border-radius: 5px;
+            color: white;
+            font-size: 16px;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        a {
+            text-decoration: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>Scan the QR Code</h2>
+        <p>Open your authenticator app and scan this code to enable 2FA.</p>
+        <img src="data:image/png;base64,{{ qr_code_b64 }}" class="qr" alt="QR Code">
+        <br>
+        <a href="{{ url_for('login') }}">
+            <button>Proceed to Login</button>
+        </a>
+    </div>
+</body>
+</html>

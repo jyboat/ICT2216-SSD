@@ -10,6 +10,10 @@ import bleach
 import re
 import logging
 import time
+import pyotp
+import qrcode
+import io
+import base64
 
 load_dotenv()  # Load environment variables from .env
 
@@ -674,19 +678,44 @@ def login():
         if user:
             stored_hash = user[3]
             if bcrypt.check_password_hash(stored_hash, password):
-                session.permanent = True
-                session['user_id'] = user[0]
-                session['user_name'] = user[1]
-                session['role'] = user[4]
-                session['last_active'] = time.time()
-                login_attempts[ip] = [] # Login Success; clear failed attempts
-                return redirect(url_for('home'))
+                session['temp_user_id'] = user[0]
+                login_attempts[ip] = [] 
+                return redirect(url_for('verify_2fa'))
             else:
                 suspicious_logger.warning(f"Failed login (wrong password) - email: {email}, IP: {request.remote_addr}")
         else:
             suspicious_logger.warning(f"Failed login (no such user) - email: {email}, IP: {request.remote_addr}")
 
     return render_template("login.html", error="Invalid email or password", hide_header=True)
+
+@app.route('/verify-2fa', methods=['GET', 'POST'])
+def verify_2fa():
+    if 'temp_user_id' not in session:
+        return redirect(url_for('login'))
+
+    if request.method == 'POST':
+        otp = request.form['otp']
+        user_id = session['temp_user_id']
+        cur = mysql.connection.cursor()
+        cur.execute("SELECT name, role, totp_secret FROM users WHERE id = %s", (user_id,))
+        result = cur.fetchone()
+        cur.close()
+
+        if result:
+            user_name, role, totp_secret = result
+            totp = pyotp.TOTP(totp_secret)
+            if totp.verify(otp):
+                # Finalize login
+                session['user_id'] = user_id
+                session['user_name'] = user_name
+                session['role'] = role
+                session['last_active'] = time.time()
+                session.pop('temp_user_id', None)
+                return redirect(url_for('home'))
+
+        return render_template("verify_2fa.html", error="Invalid OTP code")
+
+    return render_template("verify_2fa.html")
 
 @app.route('/register', methods=['GET', 'POST'])
 def register():
@@ -696,33 +725,63 @@ def register():
         password = request.form['password']
         confirm_password = request.form['confirm_password']
 
-        # check for empty fields
+
         if not name or not email or not password or not confirm_password:
             return render_template("register.html", error="All fields are required", hide_header=True)
 
-        # check that both password fields are the same
+
         if password != confirm_password:
             return render_template("register.html", error="Passwords do not match", hide_header=True)
 
-        # check if email already exists
+
         cur = mysql.connection.cursor()
         cur.execute("SELECT * FROM users WHERE email = %s", (email,))
         existing_user = cur.fetchone()
         if existing_user:
             return render_template("register.html", error="An account with that email already exists", hide_header=True)
 
-        # check if password is at least 8 characters
         if len(password) < 8:
             return render_template("register.html", error="Password must be at least 8 characters", hide_header=True)
 
+        #password hasing
         hashed_pw = bcrypt.generate_password_hash(password).decode('utf-8')
-        cur.execute("INSERT INTO users (name, email, password_hash) VALUES (%s, %s, %s)",
-                    (name, email, hashed_pw))
+        totp_secret = pyotp.random_base32()
+        cur.execute("""
+            INSERT INTO users (name, email, password_hash, totp_secret)
+            VALUES (%s, %s, %s, %s)
+        """, (name, email, hashed_pw, totp_secret))
         mysql.connection.commit()
+        cur.close()
 
-        return redirect(url_for('index', success='1'))
+        session['temp_new_user_email'] = email 
+        return redirect(url_for('setup_2fa'))
 
     return render_template("register.html", hide_header=True)
+
+@app.route('/setup-2fa')
+def setup_2fa():
+    email = session.get('temp_new_user_email')
+    if not email:
+        return redirect(url_for('login'))
+
+    cur = mysql.connection.cursor()
+    cur.execute("SELECT totp_secret FROM users WHERE email = %s", (email,))
+    result = cur.fetchone()
+    cur.close()
+
+    if not result:
+        abort(404)
+
+    totp_secret = result[0]
+    totp = pyotp.TOTP(totp_secret)
+    uri = totp.provisioning_uri(name=email, issuer_name="MyFlaskApp")
+    qr_img = qrcode.make(uri)
+    buf = io.BytesIO()
+    qr_img.save(buf, format='PNG')
+    qr_code_b64 = base64.b64encode(buf.getvalue()).decode('utf-8')
+
+    return render_template("setup_2fa.html", qr_code_b64=qr_code_b64)
+
 
 @app.route("/logout")
 def logout():
