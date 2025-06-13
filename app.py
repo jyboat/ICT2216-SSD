@@ -5,7 +5,7 @@ from collections import defaultdict
 import os
 from flask_mysqldb import MySQL
 from flask_bcrypt import Bcrypt
-from datetime import timedelta
+from datetime import timedelta, datetime
 import bleach
 import re
 import logging
@@ -665,6 +665,7 @@ def login():
         # Block if too many attempts
         if len(login_attempts[ip]) >= BLOCK_THRESHOLD:
             suspicious_logger.warning(f"Blocked login - too many attempts - IP: {ip}")
+            log_to_database("WARNING", 429, 'Unauthenticated', ip, "/login", "Blocked login - too many attempts")
             return render_template("login.html", error="Too many failed attempts. Try again later.", hide_header=True)
 
         # Otherwise, Continue with login attempt
@@ -683,8 +684,12 @@ def login():
                 return redirect(url_for('verify_2fa'))
             else:
                 suspicious_logger.warning(f"Failed login (wrong password) - email: {email}, IP: {request.remote_addr}")
+                log_to_database("WARNING", 401, 'Unauthenticated', request.remote_addr, "/login",
+                                f"Failed login (wrong password) - email: {email}")
         else:
             suspicious_logger.warning(f"Failed login (no such user) - email: {email}, IP: {request.remote_addr}")
+            log_to_database("WARNING", 401, 'Unauthenticated', request.remote_addr, "/login",
+                            f"Failed login (no such user) - email: {email}")
 
     return render_template("login.html", error="Invalid email or password", hide_header=True)
 
@@ -791,19 +796,31 @@ def logout():
 @app.errorhandler(403)
 def forbidden(e):
     user_id = session.get('user_id', 'Unauthenticated')
-    suspicious_logger.warning(f"403 Forbidden - user_id: {user_id}, IP: {request.remote_addr}, path: {request.path}")
+    ip = request.remote_addr
+    path = request.path
+    msg = "403 Forbidden"
+    suspicious_logger.warning(f"{msg} - user_id: {user_id}, IP: {ip}, path: {path}")
+    log_to_database("WARNING", 403, user_id, ip, path, msg)
     return render_template("error.html", error=e), 403
 
 @app.errorhandler(404)
 def not_found(e):
     user_id = session.get('user_id', 'Unauthenticated')
-    suspicious_logger.warning(f"404 Not Found - user_id: {user_id}, IP: {request.remote_addr}, path: {request.path}")
+    ip = request.remote_addr
+    path = request.path
+    msg = "404 Not Found"
+    suspicious_logger.warning(f"{msg} - user_id: {user_id}, IP: {ip}, path: {path}")
+    log_to_database("WARNING", 404, user_id, ip, path, msg)
     return render_template("error.html", error=e), 404
 
 @app.errorhandler(400)
 def bad_request(e):
     user_id = session.get('user_id', 'Unauthenticated')
-    suspicious_logger.warning(f"400 Bad Request - user_id: {user_id}, IP: {request.remote_addr}, path: {request.path}")
+    ip = request.remote_addr
+    path = request.path
+    msg = "400 Bad Request"
+    suspicious_logger.warning(f"{msg} - user_id: {user_id}, IP: {ip}, path: {path}")
+    log_to_database("WARNING", 400, user_id, ip, path, msg)
     return render_template("error.html", error=e), 400
 
 app.config['MYSQL_HOST'] = os.getenv('MYSQL_HOST')
@@ -821,6 +838,15 @@ file_handler.setFormatter(formatter)
 suspicious_logger.addHandler(file_handler)
 
 mysql = MySQL(app)
+
+def log_to_database(type, status_code, user_id, ip_address, path, message):
+    cur = mysql.connection.cursor()
+    cur.execute("""
+        INSERT INTO logs (timestamp, type, status_code, user_id, ip_address, path, message)
+        VALUES (%s, %s, %s, %s, %s, %s, %s)
+    """, (datetime.now(), type, status_code, str(user_id), ip_address, path, message))
+    mysql.connection.commit()
+    cur.close()
 
 if __name__ == "__main__":
     app.run(debug=True, host="0.0.0.0", port=80)
