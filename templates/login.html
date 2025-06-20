@@ -24,12 +24,12 @@
 
         <form method="POST" action="{{ url_for('login') }}">
             <div data-mdb-input-init class="form-outline mb-4">
-                <input type="email" name="email" id="form2Example1" class="form-control" />
+                <input type="email" name="email" id="form2Example1" class="form-control" required/>
                 <label class="form-label" for="form2Example1">Email address</label>
             </div>
 
             <div data-mdb-input-init class="form-outline mb-4">
-                <input type="password" name="password" id="form2Example2" class="form-control" />
+                <input type="password" name="password" id="form2Example2" class="form-control" required/>
                 <label class="form-label" for="form2Example2">Password</label>
             </div>
 

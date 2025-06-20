@@ -42,9 +42,6 @@ def is_session_expired():
     session['last_active'] = time.time()
     return False
 
-# TODO: consider wrapping repeated code in reusable helper functions
-# TODO: replace with dynamic user id upon login
-
 # Helper function to check if educator role
 def is_educator(user_id):
     cur = mysql.connection.cursor()
@@ -64,8 +61,8 @@ def index():
 
 @app.route("/home")
 def home():
-    if is_session_expired():
-        return redirect(url_for('index'))
+    if 'user_id' not in session or is_session_expired():
+        return redirect(url_for('login'))
 
     user_id = session['user_id']
     user_name = session['user_name']
@@ -118,6 +115,9 @@ def home():
 
 @app.route("/materials/<int:material_id>/download")
 def download_material(material_id):
+    if 'user_id' not in session or is_session_expired():
+        return redirect(url_for('login'))
+    
     user_id = get_current_user_id()
     cur = mysql.connection.cursor()
     cur.execute("SELECT role FROM users WHERE id = %s", (user_id,))
@@ -161,6 +161,9 @@ def download_material(material_id):
 
 @app.route("/materials/<int:material_id>/edit", methods=["GET", "POST"])
 def edit_material(material_id):
+    if 'user_id' not in session or is_session_expired():
+        return redirect(url_for('login'))
+    
     user_id = get_current_user_id()
     cur = mysql.connection.cursor()
 
@@ -220,6 +223,9 @@ def edit_material(material_id):
 
 @app.route("/materials/<int:material_id>/delete", methods=["POST"])
 def delete_material(material_id):
+    if 'user_id' not in session or is_session_expired():
+        return redirect(url_for('login'))
+    
     user_id = get_current_user_id()
     cur = mysql.connection.cursor()
 
@@ -242,6 +248,9 @@ def delete_material(material_id):
 
 @app.route("/courses/<int:course_id>/announcement/<int:announcement_id>/edit", methods=["GET", "POST"])
 def edit_announcement(course_id, announcement_id):
+    if 'user_id' not in session or is_session_expired():
+        return redirect(url_for('login'))
+
     user_id = get_current_user_id()
     cur = mysql.connection.cursor()
 
@@ -281,6 +290,9 @@ def edit_announcement(course_id, announcement_id):
 
 @app.route("/courses/<int:course_id>/upload", methods=["GET", "POST"])
 def upload_material(course_id):
+    if 'user_id' not in session or is_session_expired():
+        return redirect(url_for('login'))
+
     user_id = get_current_user_id()
     cur = mysql.connection.cursor()
     
@@ -343,6 +355,9 @@ def upload_material(course_id):
 
 @app.route("/courses/<int:course_id>")
 def view_course(course_id):
+    if 'user_id' not in session or is_session_expired():
+        return redirect(url_for('login'))
+    
     user_id = get_current_user_id()
     cur = mysql.connection.cursor()
 
@@ -385,6 +400,9 @@ def view_course(course_id):
 
 @app.route("/courses/<int:course_id>/announcement/<int:announcement_id>/delete", methods=["POST"])
 def delete_announcement(course_id, announcement_id):
+    if 'user_id' not in session or is_session_expired():
+        return redirect(url_for('login'))
+    
     user_id = get_current_user_id()
     cur = mysql.connection.cursor()
 
@@ -409,6 +427,9 @@ def delete_announcement(course_id, announcement_id):
 
 @app.route("/courses/<int:course_id>/forum", methods=["GET", "POST"])
 def course_forum(course_id):
+    if 'user_id' not in session or is_session_expired():
+        return redirect(url_for('login'))
+
     user_id = get_current_user_id()
     cur = mysql.connection.cursor()
 
@@ -485,6 +506,9 @@ def course_forum(course_id):
 
 @app.route("/forum/posts/<int:post_id>/edit", methods=["GET", "POST"])
 def edit_post(post_id):
+    if 'user_id' not in session or is_session_expired():
+        return redirect(url_for('login'))
+    
     user_id = get_current_user_id()
     cur = mysql.connection.cursor()
 
@@ -520,6 +544,9 @@ def edit_post(post_id):
 
 @app.route("/forum/posts/<int:post_id>/delete", methods=["POST"])
 def delete_post(post_id):
+    if 'user_id' not in session or is_session_expired():
+        return redirect(url_for('login'))
+    
     user_id = get_current_user_id()
     cur = mysql.connection.cursor()
     cur.execute("SELECT author_id FROM forum_posts WHERE id = %s", (post_id,))
@@ -541,6 +568,9 @@ def delete_post(post_id):
 
 @app.route("/courses/<int:course_id>/announcement", methods=["GET", "POST"])
 def post_announcement(course_id):
+    if 'user_id' not in session or is_session_expired():
+        return redirect(url_for('login'))
+    
     user_id = get_current_user_id()
     cur = mysql.connection.cursor()
     cur.execute("SELECT role FROM users WHERE id = %s", (user_id,))
@@ -571,6 +601,9 @@ def post_announcement(course_id):
 
 @app.route("/admin/users")
 def manage_users():
+    if 'user_id' not in session or is_session_expired():
+        return redirect(url_for('login'))
+    
     if session.get('role') != 'admin':
         abort(403, description="Admin access required")
     user_id = get_current_user_id()
@@ -584,6 +617,9 @@ def manage_users():
 
 @app.route("/admin/users/add", methods=["GET", "POST"])
 def add_user():
+    if 'user_id' not in session or is_session_expired():
+        return redirect(url_for('login'))
+    
     if session.get('role') != 'admin':
         abort(403, description="Admin access required")
     user_id = get_current_user_id()
@@ -611,6 +647,9 @@ def add_user():
 
 @app.route("/admin/users/<int:user_id>/edit", methods=["GET", "POST"])
 def edit_user(user_id):
+    if 'user_id' not in session or is_session_expired():
+        return redirect(url_for('login'))
+    
     if session.get('role') != 'admin':
         abort(403, description="Admin access required")
     user_id = get_current_user_id()
@@ -641,6 +680,9 @@ def edit_user(user_id):
 
 @app.route("/admin/users/<int:user_id>/delete", methods=["POST"])
 def delete_user(user_id):
+    if 'user_id' not in session or is_session_expired():
+        return redirect(url_for('login'))
+
     if session.get('role') != 'admin':
         abort(403, description="Admin access required")
     user_id = get_current_user_id()
@@ -747,11 +789,15 @@ def register():
         existing_user = cur.fetchone()
         if existing_user:
             return render_template("register.html", error="An account with that email already exists", hide_header=True)
+        
+        if len(password) < 8 or \
+            not re.search(r'[A-Z]', password) or \
+            not re.search(r'[a-z]', password) or \
+            not re.search(r'[0-9]', password) or \
+            not re.search(r'[!@#$%^&*(),.?":{}|<>]', password):
+            return render_template("register.html", error="Password must be at least 8 characters and include uppercase, lowercase, digit, and special character.", hide_header=True)
 
-        if len(password) < 8:
-            return render_template("register.html", error="Password must be at least 8 characters", hide_header=True)
-
-        #password hasing
+        #password hashing
         hashed_pw = bcrypt.generate_password_hash(password).decode('utf-8')
         totp_secret = pyotp.random_base32()
         cur.execute("""
