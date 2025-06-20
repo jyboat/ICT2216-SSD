@@ -722,6 +722,12 @@ def login():
             stored_hash = user[3]
             if bcrypt.check_password_hash(stored_hash, password):
                 session['temp_user_id'] = user[0]
+
+                if request.form.get('remember_me') == 'on':
+                    session.permanent = True
+                else:
+                    session.permanent = False
+
                 login_attempts[ip] = [] 
                 return redirect(url_for('verify_2fa'))
             else:
