@@ -691,7 +691,10 @@ def login():
             log_to_database("WARNING", 401, 'Unauthenticated', request.remote_addr, "/login",
                             f"Failed login (no such user) - email: {email}")
 
-    return render_template("login.html", error="Invalid email or password", hide_header=True)
+    if request.method == 'POST':
+        return render_template("login.html", error="Invalid email or password", hide_header=True)
+    else:
+        return render_template("login.html", hide_header=True)
 
 @app.route('/verify-2fa', methods=['GET', 'POST'])
 def verify_2fa():
