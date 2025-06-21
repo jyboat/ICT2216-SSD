@@ -33,13 +33,44 @@ BLOCK_WINDOW = 600  # seconds
 
 # function to check if session has expired
 def is_session_expired():
-    if 'user_id' not in session:
-        return True
-    last = session.get('last_active', 0)
-    if time.time() - last > 900:  # 900 = 15 mins
+    if 'user_id' not in session or 'session_token' not in session:
         session.clear()
         return True
+    
+    # check if token matches
+    cur = mysql.connection.cursor()
+    cur.execute("SELECT session_token FROM users WHERE id = %s", (session['user_id'],))
+    db_token = cur.fetchone()
+    cur.close()
+
+    if not db_token or db_token[0] != session.get('session_token'):
+        session.clear()
+        return True
+
+    last = session.get('last_active', 0)
+    if time.time() - last > 900:
+        session.clear()
+        return True
+
     session['last_active'] = time.time()
+    return False
+
+def is_valid_session():
+    if 'user_id' not in session or 'session_token' not in session:
+        return False
+
+    cur = mysql.connection.cursor()
+    cur.execute("SELECT session_token FROM users WHERE id = %s", (session['user_id'],))
+    result = cur.fetchone()
+    cur.close()
+
+    return result and result[0] == session.get('session_token')
+
+def is_logged_in():
+    if is_valid_session():
+        if time.time() - session.get('last_active', 0) < 900:
+            session['last_active'] = time.time()
+            return True
     return False
 
 # Helper function to check if educator role
@@ -61,8 +92,10 @@ def index():
 
 @app.route("/home")
 def home():
-    if 'user_id' not in session or is_session_expired():
-        return redirect(url_for('login'))
+    if 'user_id' not in session:
+        return redirect(url_for('login')) 
+    elif is_session_expired():
+        return redirect(url_for('login', error='session_expired'))
 
     user_id = session['user_id']
     user_name = session['user_name']
@@ -115,8 +148,10 @@ def home():
 
 @app.route("/materials/<int:material_id>/download")
 def download_material(material_id):
-    if 'user_id' not in session or is_session_expired():
+    if 'user_id' not in session:
         return redirect(url_for('login'))
+    elif is_session_expired():
+        return redirect(url_for('login', error='session_expired'))
     
     user_id = get_current_user_id()
     cur = mysql.connection.cursor()
@@ -161,8 +196,10 @@ def download_material(material_id):
 
 @app.route("/materials/<int:material_id>/edit", methods=["GET", "POST"])
 def edit_material(material_id):
-    if 'user_id' not in session or is_session_expired():
-        return redirect(url_for('login'))
+    if 'user_id' not in session:
+        return redirect(url_for('login'))  
+    elif is_session_expired():
+        return redirect(url_for('login', error='session_expired')) 
     
     user_id = get_current_user_id()
     cur = mysql.connection.cursor()
@@ -223,8 +260,10 @@ def edit_material(material_id):
 
 @app.route("/materials/<int:material_id>/delete", methods=["POST"])
 def delete_material(material_id):
-    if 'user_id' not in session or is_session_expired():
-        return redirect(url_for('login'))
+    if 'user_id' not in session:
+        return redirect(url_for('login')) 
+    elif is_session_expired():
+        return redirect(url_for('login', error='session_expired')) 
     
     user_id = get_current_user_id()
     cur = mysql.connection.cursor()
@@ -248,8 +287,10 @@ def delete_material(material_id):
 
 @app.route("/courses/<int:course_id>/announcement/<int:announcement_id>/edit", methods=["GET", "POST"])
 def edit_announcement(course_id, announcement_id):
-    if 'user_id' not in session or is_session_expired():
-        return redirect(url_for('login'))
+    if 'user_id' not in session:
+        return redirect(url_for('login')) 
+    elif is_session_expired():
+        return redirect(url_for('login', error='session_expired')) 
 
     user_id = get_current_user_id()
     cur = mysql.connection.cursor()
@@ -290,8 +331,10 @@ def edit_announcement(course_id, announcement_id):
 
 @app.route("/courses/<int:course_id>/upload", methods=["GET", "POST"])
 def upload_material(course_id):
-    if 'user_id' not in session or is_session_expired():
-        return redirect(url_for('login'))
+    if 'user_id' not in session:
+        return redirect(url_for('login'))  
+    elif is_session_expired():
+        return redirect(url_for('login', error='session_expired'))  
 
     user_id = get_current_user_id()
     cur = mysql.connection.cursor()
@@ -355,8 +398,10 @@ def upload_material(course_id):
 
 @app.route("/courses/<int:course_id>")
 def view_course(course_id):
-    if 'user_id' not in session or is_session_expired():
-        return redirect(url_for('login'))
+    if 'user_id' not in session:
+        return redirect(url_for('login')) 
+    elif is_session_expired():
+        return redirect(url_for('login', error='session_expired')) 
     
     user_id = get_current_user_id()
     cur = mysql.connection.cursor()
@@ -400,8 +445,10 @@ def view_course(course_id):
 
 @app.route("/courses/<int:course_id>/announcement/<int:announcement_id>/delete", methods=["POST"])
 def delete_announcement(course_id, announcement_id):
-    if 'user_id' not in session or is_session_expired():
-        return redirect(url_for('login'))
+    if 'user_id' not in session:
+        return redirect(url_for('login')) 
+    elif is_session_expired():
+        return redirect(url_for('login', error='session_expired')) 
     
     user_id = get_current_user_id()
     cur = mysql.connection.cursor()
@@ -427,8 +474,10 @@ def delete_announcement(course_id, announcement_id):
 
 @app.route("/courses/<int:course_id>/forum", methods=["GET", "POST"])
 def course_forum(course_id):
-    if 'user_id' not in session or is_session_expired():
-        return redirect(url_for('login'))
+    if 'user_id' not in session:
+        return redirect(url_for('login'))  
+    elif is_session_expired():
+        return redirect(url_for('login', error='session_expired')) 
 
     user_id = get_current_user_id()
     cur = mysql.connection.cursor()
@@ -506,8 +555,10 @@ def course_forum(course_id):
 
 @app.route("/forum/posts/<int:post_id>/edit", methods=["GET", "POST"])
 def edit_post(post_id):
-    if 'user_id' not in session or is_session_expired():
-        return redirect(url_for('login'))
+    if 'user_id' not in session:
+        return redirect(url_for('login')) 
+    elif is_session_expired():
+        return redirect(url_for('login', error='session_expired')) 
     
     user_id = get_current_user_id()
     cur = mysql.connection.cursor()
@@ -544,8 +595,10 @@ def edit_post(post_id):
 
 @app.route("/forum/posts/<int:post_id>/delete", methods=["POST"])
 def delete_post(post_id):
-    if 'user_id' not in session or is_session_expired():
-        return redirect(url_for('login'))
+    if 'user_id' not in session:
+        return redirect(url_for('login')) 
+    elif is_session_expired():
+        return redirect(url_for('login', error='session_expired')) 
     
     user_id = get_current_user_id()
     cur = mysql.connection.cursor()
@@ -568,8 +621,10 @@ def delete_post(post_id):
 
 @app.route("/courses/<int:course_id>/announcement", methods=["GET", "POST"])
 def post_announcement(course_id):
-    if 'user_id' not in session or is_session_expired():
-        return redirect(url_for('login'))
+    if 'user_id' not in session:
+        return redirect(url_for('login'))  
+    elif is_session_expired():
+        return redirect(url_for('login', error='session_expired'))  
     
     user_id = get_current_user_id()
     cur = mysql.connection.cursor()
@@ -601,8 +656,10 @@ def post_announcement(course_id):
 
 @app.route("/admin/users")
 def manage_users():
-    if 'user_id' not in session or is_session_expired():
-        return redirect(url_for('login'))
+    if 'user_id' not in session:
+        return redirect(url_for('login')) 
+    elif is_session_expired():
+        return redirect(url_for('login', error='session_expired')) 
     
     if session.get('role') != 'admin':
         abort(403, description="Admin access required")
@@ -617,8 +674,10 @@ def manage_users():
 
 @app.route("/admin/users/add", methods=["GET", "POST"])
 def add_user():
-    if 'user_id' not in session or is_session_expired():
-        return redirect(url_for('login'))
+    if 'user_id' not in session:
+        return redirect(url_for('login'))  
+    elif is_session_expired():
+        return redirect(url_for('login', error='session_expired')) 
     
     if session.get('role') != 'admin':
         abort(403, description="Admin access required")
@@ -647,8 +706,10 @@ def add_user():
 
 @app.route("/admin/users/<int:user_id>/edit", methods=["GET", "POST"])
 def edit_user(user_id):
-    if 'user_id' not in session or is_session_expired():
-        return redirect(url_for('login'))
+    if 'user_id' not in session:
+        return redirect(url_for('login')) 
+    elif is_session_expired():
+        return redirect(url_for('login', error='session_expired')) 
     
     if session.get('role') != 'admin':
         abort(403, description="Admin access required")
@@ -680,8 +741,10 @@ def edit_user(user_id):
 
 @app.route("/admin/users/<int:user_id>/delete", methods=["POST"])
 def delete_user(user_id):
-    if 'user_id' not in session or is_session_expired():
-        return redirect(url_for('login'))
+    if 'user_id' not in session:
+        return redirect(url_for('login')) 
+    elif is_session_expired():
+        return redirect(url_for('login', error='session_expired'))
 
     if session.get('role') != 'admin':
         abort(403, description="Admin access required")
@@ -694,6 +757,14 @@ def delete_user(user_id):
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
+    if is_logged_in():
+        return redirect(url_for('home'))
+    
+    error_param = request.args.get('error')
+    error_message = None
+    if error_param == 'session_expired':
+        error_message = "Your session has expired. Please log in again."
+
     if request.method == 'POST':
         ip = request.remote_addr
         now = time.time()
@@ -742,7 +813,7 @@ def login():
     if request.method == 'POST':
         return render_template("login.html", error="Invalid email or password", hide_header=True)
     else:
-        return render_template("login.html", hide_header=True)
+        return render_template("login.html", hide_header=True, error=error_message)
 
 @app.route('/verify-2fa', methods=['GET', 'POST'])
 def verify_2fa():
@@ -761,20 +832,30 @@ def verify_2fa():
             user_name, role, totp_secret = result
             totp = pyotp.TOTP(totp_secret)
             if totp.verify(otp):
+                cur = mysql.connection.cursor()
+                new_token = os.urandom(32).hex()
+                cur.execute("UPDATE users SET session_token = %s WHERE id = %s", (new_token, user_id))
+                mysql.connection.commit()
+                cur.close()
+
                 # Finalize login
                 session['user_id'] = user_id
                 session['user_name'] = user_name
                 session['role'] = role
                 session['last_active'] = time.time()
+                session['session_token'] = new_token
                 session.pop('temp_user_id', None)
                 return redirect(url_for('home'))
 
+        cur.close()
         return render_template("verify_2fa.html", error="Invalid OTP code")
 
     return render_template("verify_2fa.html")
 
 @app.route('/register', methods=['GET', 'POST'])
 def register():
+    if is_logged_in():
+        return redirect(url_for('home'))
     if request.method == 'POST':
         name = request.form['name'].strip()
         email = request.form['email'].strip().lower()
@@ -845,6 +926,12 @@ def setup_2fa():
 
 @app.route("/logout")
 def logout():
+    user_id = session.get('user_id')
+    if user_id:
+        cur = mysql.connection.cursor()
+        cur.execute("UPDATE users SET session_token = NULL WHERE id = %s", (user_id,))
+        mysql.connection.commit()
+        cur.close()
     session.clear()
     return redirect(url_for('index'))
 
