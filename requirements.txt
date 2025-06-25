@@ -7,5 +7,4 @@ pyotp
 qrcode
 Pillow
 requests
-selenium
 pytest
