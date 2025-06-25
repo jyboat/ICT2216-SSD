@@ -1,7 +1,8 @@
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.by import By
-import time
+from selenium.webdriver.common.desired_capabilities import DesiredCapabilities
+from selenium.webdriver.remote.webdriver import WebDriver
 
 def test_login_page_loads():
     options = Options()
@@ -9,16 +10,19 @@ def test_login_page_loads():
     options.add_argument("--no-sandbox")
     options.add_argument("--disable-dev-shm-usage")
 
-    driver = webdriver.Chrome(options=options)
-    driver.get("http://localhost/login") # to match app.py port 80
+    # Use remote WebDriver to connect to the Docker container
+    driver: WebDriver = webdriver.Remote(
+        command_executor='http://localhost:4444/wd/hub',
+        options=options,
+        desired_capabilities=DesiredCapabilities.CHROME
+    )
 
+    driver.get("http://localhost/login")
     assert "StudyNest Login" in driver.title
 
-    # Optional: Check if form is present
-    email_input = driver.find_element(By.NAME, "email")
-    password_input = driver.find_element(By.NAME, "password")
-    login_button = driver.find_element(By.ID, "signInBtn")
-
-    assert email_input and password_input and login_button
+    # Optional: check for form fields
+    assert driver.find_element(By.NAME, "email")
+    assert driver.find_element(By.NAME, "password")
+    assert driver.find_element(By.ID, "signInBtn")
 
     driver.quit()
