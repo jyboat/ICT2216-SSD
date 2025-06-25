@@ -14,6 +14,7 @@ import pyotp
 import qrcode
 import io
 import base64
+import requests
 
 load_dotenv()  # Load environment variables from .env
 
@@ -23,6 +24,8 @@ app = Flask(__name__)
 app.secret_key = os.getenv("SECRET_KEY")
 bcrypt = Bcrypt(app)
 
+# cf key
+cf_secret_key = os.getenv("CF_SECRET_KEY")
 # session timeout
 app.permanent_session_lifetime = timedelta(minutes=15)
 
@@ -768,6 +771,38 @@ def login():
     if request.method == 'POST':
         ip = request.remote_addr
         now = time.time()
+
+        # Get the Cloudflare Turnstile token
+        cf_turnstile_response = request.form.get('cf-turnstile-response')
+        
+        # If no token was provided, return an error
+        if not cf_turnstile_response:
+            suspicious_logger.warning(f"Login attempt without Cloudflare verification - IP: {ip}")
+            log_to_database("WARNING", 400, 'Unauthenticated', ip, "/login", "Login attempt without Cloudflare verification")
+            return render_template("login.html", error="Please complete the security check", hide_header=True)
+            
+        # Verify the token with Cloudflare
+        verification_data = {
+            'secret': cf_secret_key,  
+            'response': cf_turnstile_response,
+            'remoteip': ip
+        }
+        try:
+            verification_response = requests.post(
+                'https://challenges.cloudflare.com/turnstile/v0/siteverify',
+                data=verification_data
+            ).json()
+            
+            # If verification failed, return an error
+            if not verification_response.get('success'):
+                suspicious_logger.warning(f"Failed Cloudflare verification - IP: {ip}")
+                log_to_database("WARNING", 400, 'Unauthenticated', ip, "/login", "Failed Cloudflare verification")
+                return render_template("login.html", error="Security check failed. Please try again.", hide_header=True)
+        except Exception as e:
+            # Handle request exceptions
+            suspicious_logger.error(f"Cloudflare verification error: {str(e)} - IP: {ip}")
+            log_to_database("ERROR", 500, 'Unauthenticated', ip, "/login", f"Cloudflare verification error: {str(e)}")
+            return render_template("login.html", error="An error occurred during verification. Please try again.", hide_header=True)
 
         # Clean old attempts
         login_attempts[ip] = [t for t in login_attempts[ip] if now - t < BLOCK_WINDOW]
