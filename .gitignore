@@ -178,3 +178,7 @@ cython_debug/
 
 # logging.txt
 logs.txt
+
+# Ignore OWASP Dependency Check output
+odc-reports/
+odc-data/
