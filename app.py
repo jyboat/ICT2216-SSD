@@ -88,6 +88,15 @@ def is_educator(user_id):
 def get_current_user_id():
     return session.get('user_id')
 
+def generate_qr(secret, email):
+    totp = pyotp.TOTP(secret)
+    uri = totp.provisioning_uri(name=email, issuer_name="MyFlaskApp")
+    qr_img = qrcode.make(uri)
+    buf = io.BytesIO()
+    qr_img.save(buf, format='PNG')
+    return base64.b64encode(buf.getvalue()).decode('utf-8')
+
+
 @app.route("/")
 def index():
     success = request.args.get('success') == '1'
@@ -934,29 +943,46 @@ def register():
 
     return render_template("register.html", hide_header=True)
 
-@app.route('/setup-2fa')
+@app.route('/setup-2fa', methods=['GET', 'POST'])
 def setup_2fa():
     email = session.get('temp_new_user_email')
     if not email:
         return redirect(url_for('login'))
 
     cur = mysql.connection.cursor()
-    cur.execute("SELECT totp_secret FROM users WHERE email = %s", (email,))
+    cur.execute("SELECT id, name, role, totp_secret FROM users WHERE email = %s", (email,))
     result = cur.fetchone()
     cur.close()
 
     if not result:
         abort(404)
 
-    totp_secret = result[0]
-    totp = pyotp.TOTP(totp_secret)
-    uri = totp.provisioning_uri(name=email, issuer_name="MyFlaskApp")
-    qr_img = qrcode.make(uri)
-    buf = io.BytesIO()
-    qr_img.save(buf, format='PNG')
-    qr_code_b64 = base64.b64encode(buf.getvalue()).decode('utf-8')
+    user_id, user_name, role, totp_secret = result
 
-    return render_template("setup_2fa.html", qr_code_b64=qr_code_b64)
+    if request.method == 'POST':
+        otp = request.form['otp']
+        totp = pyotp.TOTP(totp_secret)
+
+        if totp.verify(otp):
+            # Finalize login
+            cur = mysql.connection.cursor()
+            new_token = os.urandom(32).hex()
+            cur.execute("UPDATE users SET session_token = %s WHERE id = %s", (new_token, user_id))
+            mysql.connection.commit()
+            cur.close()
+
+            session['user_id'] = user_id
+            session['user_name'] = user_name
+            session['role'] = role
+            session['last_active'] = time.time()
+            session['session_token'] = new_token
+            session.pop('temp_new_user_email', None)
+
+            return redirect(url_for('home'))
+
+        return render_template("setup_2fa.html", qr_code_b64=generate_qr(totp_secret, email), error="Invalid OTP")
+
+    return render_template("setup_2fa.html", qr_code_b64=generate_qr(totp_secret, email))
 
 
 @app.route("/logout")

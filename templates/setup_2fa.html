@@ -22,6 +22,12 @@
             height: 200px;
             margin: 20px 0;
         }
+        input[type="text"] {
+            padding: 10px;
+            font-size: 18px;
+            width: 150px;
+            margin-top: 10px;
+        }
         button {
             padding: 10px 20px;
             background-color: #007BFF;
@@ -30,12 +36,13 @@
             color: white;
             font-size: 16px;
             cursor: pointer;
+            margin-top: 10px;
         }
         button:hover {
             background-color: #0056b3;
         }
-        a {
-            text-decoration: none;
+        .error {
+            color: red;
         }
     </style>
 </head>
@@ -44,10 +51,17 @@
         <h2>Scan the QR Code</h2>
         <p>Open your authenticator app and scan this code to enable 2FA.</p>
         <img src="data:image/png;base64,{{ qr_code_b64 }}" class="qr" alt="QR Code">
-        <br>
-        <a href="{{ url_for('login') }}">
-            <button>Proceed to Login</button>
-        </a>
+
+        <form method="POST" action="{{ url_for('verify_2fa') }}">
+            <p>Then enter the 6-digit code from your app:</p>
+            <input type="text" name="otp" maxlength="6" required>
+            <br>
+            <button type="submit">Verify and Login</button>
+        </form>
+
+        {% if error %}
+            <p class="error">{{ error }}</p>
+        {% endif %}
     </div>
 </body>
 </html>
