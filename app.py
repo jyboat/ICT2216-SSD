@@ -627,14 +627,15 @@ def delete_post(post_id):
     mysql.connection.commit()
     cur.close()
 
-    # Safe redirect fallback
+    # Secure redirect: only allow known paths
     referrer = request.referrer or ""
+    safe_paths = ["/forum", "/home"]
     parsed = urlparse(referrer.replace('\\', ''))
 
-    if not parsed.netloc and not parsed.scheme:
-        return redirect(referrer)
-    else:
-        return redirect(url_for("home"))
+    if parsed.path in safe_paths and not parsed.netloc and not parsed.scheme:
+        return redirect(parsed.path)
+
+    return redirect(url_for("home"))
 
 
 @app.route("/courses/<int:course_id>/announcement", methods=["GET", "POST"])
