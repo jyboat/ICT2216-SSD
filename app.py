@@ -517,9 +517,6 @@ def course_forum(course_id):
         # Validate length and reject patterns
         if not content or len(content) > 1000:
             abort(400, description="Invalid content")
-        # simple regex to catch script injection attempts
-        if re.search(r'<\s*script\b|on\w+\s*=\s*|javascript\s*:', content, re.IGNORECASE):
-            abort(400, description="Malicious input blocked")
         # Sanitize
         content = bleach.clean(content, tags=[], attributes={}, strip=True)
 
