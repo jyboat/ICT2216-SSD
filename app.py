@@ -1,6 +1,7 @@
 from dotenv import load_dotenv
 from flask import Flask, render_template, request, redirect, url_for, send_from_directory, session, Response, make_response, abort
 from werkzeug.utils import secure_filename
+from urllib.parse import urlparse
 from collections import defaultdict
 import os
 from flask_mysqldb import MySQL
@@ -625,7 +626,15 @@ def delete_post(post_id):
     cur.execute("DELETE FROM forum_posts WHERE id = %s", (post_id,))
     mysql.connection.commit()
     cur.close()
-    return redirect(request.referrer or url_for("home"))
+
+    # Safe redirect fallback
+    referrer = request.referrer or ""
+    parsed = urlparse(referrer.replace('\\', ''))
+
+    if not parsed.netloc and not parsed.scheme:
+        return redirect(referrer)
+    else:
+        return redirect(url_for("home"))
 
 
 @app.route("/courses/<int:course_id>/announcement", methods=["GET", "POST"])
