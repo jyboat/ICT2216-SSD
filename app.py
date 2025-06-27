@@ -1041,9 +1041,69 @@ def manage_courses():
         user_name=user_name
     )
 
+@app.route("/admin/courses/<int:course_id>/edit", methods=["GET", "POST"])
+def edit_course(course_id):
+
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+    elif is_session_expired():
+        return redirect(url_for('login', error='session_expired'))
+    if session.get('role') != 'admin':
+        abort(403, description="Admin access required")
+
+    cur = mysql.connection.cursor()
+    if request.method == "POST":
+        code        = request.form["course_code"].strip()
+        name        = request.form["name"].strip()
+        description = request.form["description"].strip()
+        if code and name:
+            cur.execute(
+                """
+                UPDATE courses
+                   SET course_code=%s,
+                       name=%s,
+                       description=%s
+                 WHERE id=%s
+                """,
+                (code, name, description, course_id)
+            )
+            mysql.connection.commit()
+            cur.close()
+            return redirect(url_for('manage_courses'))
 
 
+    cur.execute(
+      "SELECT course_code, name, description FROM courses WHERE id=%s",
+      (course_id,)
+    )
+    row = cur.fetchone()
+    cur.close()
+    if not row:
+        abort(404)
 
+    course_code, course_name, course_desc = row
+    return render_template(
+      "course_edit.html",
+      course_id=course_id,
+      course_code=course_code,
+      course_name=course_name,
+      course_desc=course_desc
+    )
+
+@app.route("/admin/courses/<int:course_id>/delete", methods=["POST"])
+def delete_course(course_id):
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+    elif is_session_expired():
+        return redirect(url_for('login', error='session_expired'))
+    if session.get('role') != 'admin':
+        abort(403, description="Admin access required")
+
+    cur = mysql.connection.cursor()
+    cur.execute("DELETE FROM courses WHERE id=%s", (course_id,))
+    mysql.connection.commit()
+    cur.close()
+    return redirect(url_for('manage_courses'))
 
 
 
