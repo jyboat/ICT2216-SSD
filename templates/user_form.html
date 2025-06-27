@@ -26,11 +26,21 @@
                 <label class="form-label">Role</label>
                 <select class="form-select" name="role" required>
                     {% for r in ['student', 'educator', 'admin'] %}
-                        <option value="{{ r }}" {% if user and user[2] == r %}selected{% endif %}>{{ r.title() }}</option>
+                    <option value="{{ r }}" {% if user and user[2]==r %}selected{% endif %}>{{ r.title() }}</option>
                     {% endfor %}
                 </select>
             </div>
-
+            <div class="mb-3">
+                <label for="course_codes" class="form-label">Courses</label>
+                <select class="form-select" name="course_codes" id="course_codes" multiple size="5">
+                    {% for code in course_codes %}
+                    <option value="{{ code }}" {% if code in assigned_codes %}selected{% endif %}>{{ code }}</option>
+                    {% endfor %}
+                </select>
+                <div class="form-text">
+                    Hold Ctrl (Cmd on Mac) to select or deselect multiple courses.
+                </div>
+            </div>
             <button type="submit" class="btn btn-primary">{{ action }}</button>
         </form>
     </div>

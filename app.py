@@ -737,16 +737,35 @@ def edit_user(user_id):
     cur.execute("SELECT name FROM users WHERE id = %s", (user_id,))
     user_name = cur.fetchone()[0]
 
+    cur.execute("SELECT course_code FROM courses ORDER BY course_code")
+    course_codes = [row[0] for row in cur.fetchall()]
+
     if request.method == "POST":
         name = request.form["name"]
         email = request.form["email"]
         role = request.form["role"]
+        selected_codes = request.form.getlist("course_codes")
 
         cur.execute("""
             UPDATE users
             SET name = %s, email = %s, role = %s
             WHERE id = %s
         """, (name, email, role, user_id))
+
+        cur.execute(
+            "DELETE FROM enrollments WHERE user_id = %s",
+            (user_id,)
+        )
+
+        for code in selected_codes:
+            cur.execute("""
+                INSERT INTO enrollments (user_id, course_id)
+                VALUES (
+                  %s,
+                  (SELECT id FROM courses WHERE course_code = %s)
+                )
+            """, (user_id, code))
+
         mysql.connection.commit()
         cur.close()
 
@@ -754,9 +773,19 @@ def edit_user(user_id):
 
     cur.execute("SELECT name, email, role FROM users WHERE id = %s", (user_id,))
     user = cur.fetchone()
+
+    cur.execute("""
+      SELECT c.course_code
+        FROM courses c
+        JOIN enrollments e ON e.course_id = c.id
+       WHERE e.user_id = %s
+    """, (user_id,))
+    assigned_codes = [row[0] for row in cur.fetchall()]
     cur.close()
 
-    return render_template("user_form.html", action="Edit", user=user, user_id=user_id, user_name=user_name)
+    return render_template("user_form.html", action="Edit", user=user, user_id=user_id, user_name=user_name,
+        course_codes=course_codes,
+        assigned_codes=assigned_codes)
 
 @app.route("/admin/users/<int:user_id>/delete", methods=["POST"])
 def delete_user(user_id):
