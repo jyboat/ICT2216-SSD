@@ -686,7 +686,19 @@ def manage_users():
     cur = mysql.connection.cursor()
     cur.execute("SELECT name FROM users WHERE id = %s", (user_id,))
     user_name = cur.fetchone()[0]
-    cur.execute("SELECT id, name, email, role FROM users")
+    cur.execute("""
+        SELECT
+          u.id,
+          u.name,
+          u.email,
+          u.role,
+          IFNULL(GROUP_CONCAT(c.course_code ORDER BY c.course_code SEPARATOR ', '), '') AS courses
+        FROM users u
+        LEFT JOIN enrollments e   ON e.user_id   = u.id
+        LEFT JOIN courses c       ON e.course_id = c.id
+        GROUP BY u.id, u.name, u.email, u.role
+        ORDER BY u.name
+    """)
     users = cur.fetchall()
     cur.close()
     return render_template("user_management.html", users=users, user_name=user_name)
