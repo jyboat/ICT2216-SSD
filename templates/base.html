@@ -33,8 +33,10 @@
                 {{ user_name }}
             </p>
             <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="dropdownMenuLink">
+                {% block dropdown_items %}
                 <li><a class="dropdown-item" href="#">Account</a></li>
                 <li><a class="dropdown-item" href="{{ url_for('logout') }}" id="logOutBtn">Log out</a></li>
+                {% endblock %}
             </ul>
         </div>
         {% endif %}

@@ -992,6 +992,62 @@ def setup_2fa():
     return render_template("setup_2fa.html", qr_code_b64=generate_qr(totp_secret, email))
 
 
+
+
+@app.route("/admin/courses", methods=["GET", "POST"])
+def manage_courses():
+
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+    elif is_session_expired():
+        return redirect(url_for('login', error='session_expired'))
+    if session.get('role') != 'admin':
+        abort(403, description="Admin access required")
+
+    user_id = get_current_user_id()
+    cur = mysql.connection.cursor()
+
+
+    if request.method == "POST" and request.form.get("course_code"):
+        code        = request.form["course_code"].strip()
+        name        = request.form["name"].strip()
+        description = request.form["description"].strip()
+        if code and name:
+            cur.execute(
+                """
+                INSERT INTO courses
+                  (course_code, name, description, educator_id)
+                VALUES (%s, %s, %s, %s)
+                """,
+                (code, name, description, user_id)
+            )
+            mysql.connection.commit()
+
+
+    cur.execute("SELECT name FROM users WHERE id = %s", (user_id,))
+    user_name = cur.fetchone()[0]
+
+    cur.execute("""
+      SELECT id, course_code, name, description
+        FROM courses
+       ORDER BY course_code
+    """)
+    courses = cur.fetchall()
+    cur.close()
+
+    return render_template(
+        "course_management.html",
+        courses=courses,
+        user_name=user_name
+    )
+
+
+
+
+
+
+
+
 @app.route("/logout")
 def logout():
     user_id = session.get('user_id')
