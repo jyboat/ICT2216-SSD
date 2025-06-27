@@ -31,3 +31,6 @@ def test_register_password_mismatch(client):
     }, follow_redirects=True)
     assert b"Passwords do not match" in response.data
 
+def test_logout_redirects_to_index(client):
+    response = client.get('/logout', follow_redirects=True)
+    assert b"Login" in response.data
