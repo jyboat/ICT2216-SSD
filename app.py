@@ -41,7 +41,7 @@ MAIL_USERNAME          = os.getenv('MAIL_USERNAME'),
 MAIL_PASSWORD          = os.getenv('MAIL_PASSWORD'),
 MAIL_DEFAULT_SENDER    = (os.getenv('MAIL_DEFAULT_SENDER_NAME'),os.getenv('MAIL_DEFAULT_SENDER_EMAIL'))
 
-# cf key
+# cf key.
 cf_secret_key = os.getenv("CF_SECRET_KEY")
 # session timeout
 app.permanent_session_lifetime = timedelta(minutes=15)
