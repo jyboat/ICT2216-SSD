@@ -106,27 +106,29 @@ def is_valid_session():
     return result and result[0] == session.get('session_token')
 
 def generate_fingerprint(request):
-    # Create a fingerprint based on user attributes
+    """Generate a fingerprint that works with Nginx"""
+    # Get browser information
     user_agent = request.headers.get('User-Agent', '')
     
-    # Get the client's real IP - prefer X-Real-IP since it's simpler with Nginx
-    real_ip = request.headers.get('X-Real-IP')
-    if not real_ip:
-        # Fall back to X-Forwarded-For if X-Real-IP is not set
-        forwarded_for = request.headers.get('X-Forwarded-For')
-        if forwarded_for:
-            real_ip = forwarded_for.split(',')[0].strip()
-        else:
-            real_ip = request.remote_addr
+    # Get the real client IP from Nginx headers
+    real_ip = request.headers.get('X-Real-IP') or request.remote_addr
     
-    # Use partial IP to allow for normal IP changes
+    # Log the IPs for debugging
+    if app.debug:
+        print(f"Remote addr: {request.remote_addr}, X-Real-IP: {real_ip}")
+    
+    # Use partial IP for some flexibility
     ip_parts = real_ip.split('.')
-    if len(ip_parts) == 4:  # IPv4
+    if len(ip_parts) >= 3:  # IPv4
         ip_partial = '.'.join(ip_parts[:3]) + '.0'
     else:
         ip_partial = real_ip  # Handle IPv6 or unusual formats
     
-    fingerprint = hashlib.sha256(f"{user_agent}|{ip_partial}".encode()).hexdigest()
+    # Create fingerprint
+    fingerprint_str = f"{user_agent}|{ip_partial}"
+    
+    fingerprint = hashlib.sha256(fingerprint_str.encode()).hexdigest()
+    
     return fingerprint
 
 def is_logged_in():
@@ -157,41 +159,48 @@ def generate_qr(secret, email):
     return base64.b64encode(buf.getvalue()).decode('utf-8')
 
 @app.before_request
-def verify_session_fingerprint():
-    """Verify fingerprint on every request to protected routes"""
+def security_check():
+    """Check for session hijacking on every request"""
     # Skip for non-authenticated routes
-    if request.endpoint in ['login', 'register', 'index', 'verify_2fa', 'setup_2fa', 'logout', 'forget_password', 'reset_password']:
+    if request.endpoint in ['login', 'register', 'static', 'verify_2fa', 'setup_2fa', 'index', 'logout', 'forget_password', 'reset_password']:
         return
     
     # Check if user is logged in
-    if 'user_id' not in session:
+    if 'user_id' not in session or 'session_token' not in session:
         return redirect(url_for('login'))
     
-    # Verify fingerprint
+    # Check fingerprint if present
     if 'fingerprint' in session:
         current_fingerprint = generate_fingerprint(request)
-        stored_fingerprint = session.get('fingerprint')
-        print(f"Current fingerprint: {current_fingerprint}, Stored fingerprint: {stored_fingerprint}")
+        stored_fingerprint = session['fingerprint']
+        
+        # Log for debugging
+        with open('fingerprint_debug.log', 'a') as f:
+            f.write(f"TIME: {datetime.now()}, PATH: {request.path}\n")
+            f.write(f"USER-AGENT: {request.headers.get('User-Agent')}\n")
+            f.write(f"REAL-IP: {request.headers.get('X-Real-IP')}\n")
+            f.write(f"STORED PRINT: {stored_fingerprint}\n")
+            f.write(f"CURRENT PRINT: {current_fingerprint}\n\n")
         
         if current_fingerprint != stored_fingerprint:
             # Log potential session hijacking attempt
             suspicious_logger.warning(
-                f"Session fingerprint mismatch - user_id: {session['user_id']}, "
-                f"IP: {request.remote_addr}, "
-                f"Expected: {stored_fingerprint}, Got: {current_fingerprint}"
+                f"Session hijacking detected! User-ID: {session['user_id']}, "
+                f"IP: {request.headers.get('X-Real-IP', request.remote_addr)}, "
+                f"UA: {request.headers.get('User-Agent', '')[:50]}"
             )
             
             # Log to database
             log_to_database(
                 "WARNING", 
                 403, 
-                session.get('user_id'), 
-                request.remote_addr, 
+                session['user_id'], 
+                request.headers.get('X-Real-IP', request.remote_addr), 
                 request.path, 
-                "Possible session hijacking attempt - fingerprint mismatch"
+                "Session hijacking attempt - fingerprint mismatch"
             )
             
-            # Clear session
+            # Invalidate session
             session.clear()
             return redirect(url_for('login', error='security_violation'))
     
@@ -1407,11 +1416,15 @@ suspicious_logger.addHandler(file_handler)
 mysql = MySQL(app)
 
 def log_to_database(type, status_code, user_id, ip_address, path, message):
+
+    # Get the real IP address dued to proxy
+    real_ip = request.headers.get('X-Real-IP', ip_address)
+
     cur = mysql.connection.cursor()
     cur.execute("""
         INSERT INTO logs (timestamp, type, status_code, user_id, ip_address, path, message)
         VALUES (%s, %s, %s, %s, %s, %s, %s)
-    """, (datetime.now(), type, status_code, str(user_id), ip_address, path, message))
+    """, (datetime.now(), type, status_code, str(user_id), real_ip, path, message))
     mysql.connection.commit()
     cur.close()
 
