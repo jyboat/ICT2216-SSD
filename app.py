@@ -1,5 +1,5 @@
 from dotenv import load_dotenv
-from flask import Flask, render_template, request, redirect, url_for, send_from_directory, session, Response, make_response, abort
+from flask import Flask, render_template, request, redirect, url_for, send_from_directory, session, Response, make_response, abort, flash
 from flask_wtf import CSRFProtect
 from werkzeug.utils import secure_filename
 from urllib.parse import urlparse
@@ -8,6 +8,11 @@ import os
 from flask_mysqldb import MySQL
 from flask_bcrypt import Bcrypt
 from datetime import timedelta, datetime
+from flask_wtf import FlaskForm
+from wtforms import StringField, SubmitField, PasswordField
+from wtforms.validators import DataRequired, Email, Length, EqualTo, Regexp
+from itsdangerous import URLSafeTimedSerializer, SignatureExpired, BadSignature
+from flask_mail import Mail, Message
 import bleach
 import re
 import logging
@@ -26,6 +31,16 @@ app = Flask(__name__)
 app.secret_key = os.getenv("SECRET_KEY")
 bcrypt = Bcrypt(app)
 csrf = CSRFProtect(app)
+mail       = Mail(app)
+serializer = URLSafeTimedSerializer(app.secret_key)
+
+MAIL_SERVER            = os.getenv('MAIL_SERVER'),
+MAIL_PORT              = int(os.getenv('MAIL_PORT', 587)),
+MAIL_USE_TLS           = os.getenv('MAIL_USE_TLS', 'True') == 'True',
+MAIL_USERNAME          = os.getenv('MAIL_USERNAME'),
+MAIL_PASSWORD          = os.getenv('MAIL_PASSWORD'),
+MAIL_DEFAULT_SENDER    = (os.getenv('MAIL_DEFAULT_SENDER_NAME'),os.getenv('MAIL_DEFAULT_SENDER_EMAIL'))
+
 # cf key
 cf_secret_key = os.getenv("CF_SECRET_KEY")
 # session timeout
@@ -1195,6 +1210,102 @@ def logout():
     session.clear()
     return redirect(url_for('index'))
 
+
+class ForgetPasswordForm(FlaskForm):
+    email = StringField('Email', validators=[DataRequired(), Email()])
+    submit = SubmitField('Send Reset Link')
+
+@app.route("/forget-password", methods=["GET", "POST"])
+def forget_password():
+    form = ForgetPasswordForm()
+    if form.validate_on_submit():  
+        email = form.email.data.strip().lower()
+        
+        cur = mysql.connection.cursor()
+        cur.execute("SELECT 1 FROM users WHERE email = %s", (email,))
+        exists = cur.fetchone() is not None
+        cur.close()
+        
+        if exists:
+            token = serializer.dumps(email, salt="password-reset-salt")
+            reset_url = url_for("reset_password", token=token, _external=True)
+            msg = Message(
+                subject="Password Reset Request",
+                recipients=[email]
+            )
+            msg.body = f"""\
+            Hi,
+
+            To reset your password, click the link below:
+            {reset_url}
+
+            If you did not request a password reset, safely ignore this message.
+            """
+            mail.send(msg)
+
+        return render_template("forgot_password_sent.html")
+
+    return render_template("forgot_password.html", form=form)
+
+
+class ResetPasswordForm(FlaskForm):
+    password = PasswordField(
+        "New Password",
+        validators=[
+            DataRequired("Please enter a password"),
+            Length(min=8, message="Password must be at least 8 characters"),
+            Regexp(r'.*[A-Z].*', message="Must include at least one uppercase letter"),
+            Regexp(r'.*[a-z].*', message="Must include at least one lowercase letter"),
+            Regexp(r'.*[0-9].*', message="Must include at least one digit"),
+            Regexp(r'.*[!@#$%^&*(),.?\":{}|<>].*', message="Must include at least one special character")
+        ]
+    )
+    confirm = PasswordField(
+        "Confirm Password",
+        validators=[
+            DataRequired("Please confirm your password"),
+            EqualTo("password", message="Passwords must match")
+        ]
+    )
+    submit = SubmitField("Reset Password")
+
+@app.route("/reset/<token>", methods=["GET", "POST"])
+def reset_password(token):
+    try:
+        email = serializer.loads(
+            token,
+            salt="password-reset-salt",
+            max_age=300             
+        )
+    except SignatureExpired:
+        flash("That link has expired. Please request a new one.", "warning")
+        return redirect(url_for("forgot_password"))
+    except BadSignature:
+        flash("Invalid reset link.", "danger")
+        return redirect(url_for("forgot_password"))
+
+    form = ResetPasswordForm()
+    if form.validate_on_submit():
+        
+        hashed_pw = bcrypt.generate_password_hash(
+            form.password.data
+        ).decode("utf-8")
+
+        cur = mysql.connection.cursor()
+        cur.execute(
+            "UPDATE users SET password_hash = %s WHERE email = %s",
+            (hashed_pw, email)
+        )
+        mysql.connection.commit()
+        cur.close()
+
+        session.clear()
+
+        flash("Your password has been reset. Please login with your new password", "success")
+        return redirect(url_for("login"))
+
+    return render_template("reset_password.html", form=form)
+
 @app.errorhandler(403)
 def forbidden(e):
     user_id = session.get('user_id', 'Unauthenticated')
@@ -1251,4 +1362,4 @@ def log_to_database(type, status_code, user_id, ip_address, path, message):
     cur.close()
 
 if __name__ == "__main__":
-    app.run(debug=True, host="0.0.0.0", port=80)
+    app.run(debug=True, host="0.0.0.0", port=443)

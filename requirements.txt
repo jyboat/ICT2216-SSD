@@ -9,3 +9,6 @@ Pillow
 requests
 pytest
 flask-wtf
+wtforms
+flask-mail
+itsdangerous
