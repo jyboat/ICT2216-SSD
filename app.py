@@ -56,6 +56,8 @@ app.config['SESSION_COOKIE_SECURE'] = True  # Only send cookies over HTTPS
 app.config['SESSION_COOKIE_HTTPONLY'] = True  # Prevent JavaScript access
 app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'  # Controls cross-site requests
 
+
+
 # function to check if session has expired
 def is_session_expired():
     if 'user_id' not in session or 'session_token' not in session:
@@ -80,16 +82,48 @@ def is_session_expired():
     session['last_active'] = time.time()
     return False
 
-# def is_valid_session():
-#     if 'user_id' not in session or 'session_token' not in session:
-#         return False
+@app.before_request
+def verify_session_fingerprint():
+    """Verify fingerprint on every request to protected routes"""
+    # Skip for non-authenticated routes
+    if request.endpoint in ['login', 'register', 'index', 'verify_2fa', 'setup_2fa', 'logout', 'forget_password', 'reset_password']:
+        return
+    
+    # Check if user is logged in
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+    
+    # Verify fingerprint
+    if 'fingerprint' in session:
+        current_fingerprint = generate_fingerprint(request)
+        stored_fingerprint = session.get('fingerprint')
+        
+        if current_fingerprint != stored_fingerprint:
+            # Log potential session hijacking attempt
+            suspicious_logger.warning(
+                f"Session fingerprint mismatch - user_id: {session['user_id']}, "
+                f"IP: {request.remote_addr}, "
+                f"Expected: {stored_fingerprint}, Got: {current_fingerprint}"
+            )
+            
+            # Log to database
+            log_to_database(
+                "WARNING", 
+                403, 
+                session.get('user_id'), 
+                request.remote_addr, 
+                request.path, 
+                "Possible session hijacking attempt - fingerprint mismatch"
+            )
+            
+            # Clear session
+            session.clear()
+            return redirect(url_for('login', error='security_violation'))
+    
+    # Also check for session expiration
+    if is_session_expired():
+        return redirect(url_for('login', error='session_expired'))
 
-#     cur = mysql.connection.cursor()
-#     cur.execute("SELECT session_token FROM users WHERE id = %s", (session['user_id'],))
-#     result = cur.fetchone()
-#     cur.close()
-
-#     return result and result[0] == session.get('session_token')
 def is_valid_session():
     if 'user_id' not in session or 'session_token' not in session or 'fingerprint' not in session:
         return False
