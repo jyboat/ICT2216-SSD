@@ -4,7 +4,6 @@ from app import app
 @pytest.fixture
 def client():
     app.config['TESTING'] = True
-    app.config['WTF_CSRF_ENABLED'] = False  # Disable CSRF in test environment to test form logic, not security
     with app.test_client() as client:
         yield client
 
