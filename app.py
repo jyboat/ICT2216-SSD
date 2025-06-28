@@ -35,6 +35,11 @@ login_attempts = defaultdict(list)
 BLOCK_THRESHOLD = 5
 BLOCK_WINDOW = 600  # seconds
 
+
+app.config['SESSION_COOKIE_SECURE'] = True  # Only send cookies over HTTPS
+app.config['SESSION_COOKIE_HTTPONLY'] = True  # Prevent JavaScript access
+app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'  # Controls cross-site requests
+
 # function to check if session has expired
 def is_session_expired():
     if 'user_id' not in session or 'session_token' not in session:
@@ -59,16 +64,43 @@ def is_session_expired():
     session['last_active'] = time.time()
     return False
 
+# def is_valid_session():
+#     if 'user_id' not in session or 'session_token' not in session:
+#         return False
+
+#     cur = mysql.connection.cursor()
+#     cur.execute("SELECT session_token FROM users WHERE id = %s", (session['user_id'],))
+#     result = cur.fetchone()
+#     cur.close()
+
+#     return result and result[0] == session.get('session_token')
 def is_valid_session():
-    if 'user_id' not in session or 'session_token' not in session:
+    if 'user_id' not in session or 'session_token' not in session or 'fingerprint' not in session:
         return False
 
+    # Check if fingerprint matches
+    current_fingerprint = generate_fingerprint(request)
+    if session.get('fingerprint') != current_fingerprint:
+        suspicious_logger.warning(f"Session fingerprint mismatch - user_id: {session['user_id']}, IP: {request.remote_addr}")
+        return False
+
+    # Check if token matches in database
     cur = mysql.connection.cursor()
     cur.execute("SELECT session_token FROM users WHERE id = %s", (session['user_id'],))
     result = cur.fetchone()
     cur.close()
 
     return result and result[0] == session.get('session_token')
+
+def generate_fingerprint(request):
+    # Create a fingerprint based on user attributes
+    user_agent = request.headers.get('User-Agent', '')
+    # Use partial IP to allow for normal IP changes
+    ip_partial = '.'.join(request.remote_addr.split('.')[:3]) + '.0'
+    
+    import hashlib
+    fingerprint = hashlib.sha256(f"{user_agent}|{ip_partial}".encode()).hexdigest()
+    return fingerprint
 
 def is_logged_in():
     if is_valid_session():
@@ -936,6 +968,7 @@ def verify_2fa():
                 session['role'] = role
                 session['last_active'] = time.time()
                 session['session_token'] = new_token
+                session['fingerprint'] = generate_fingerprint(request)
                 session.pop('temp_user_id', None)
                 return redirect(url_for('home'))
 
@@ -1024,6 +1057,7 @@ def setup_2fa():
             session['role'] = role
             session['last_active'] = time.time()
             session['session_token'] = new_token
+            session['fingerprint'] = generate_fingerprint(request)
             session.pop('temp_new_user_email', None)
 
             return redirect(url_for('home'))
