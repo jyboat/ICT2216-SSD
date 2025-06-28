@@ -208,6 +208,20 @@ def security_check():
     if is_session_expired():
         return redirect(url_for('login', error='session_expired'))
 
+@app.route('/ip-check')
+def ip_check():
+    """Debug endpoint to check all IP-related headers"""
+    ip_info = {
+        'Remote Addr': request.remote_addr,
+        'X-Forwarded-For': request.headers.get('X-Forwarded-For', 'Not set'),
+        'X-Real-IP': request.headers.get('X-Real-IP', 'Not set'),
+        'All Headers': dict(request.headers)
+    }
+    
+    return f"""
+    <h1>IP Address Information</h1>
+    <pre>{str(ip_info)}</pre>
+    """
 
 @app.route("/")
 def index():
