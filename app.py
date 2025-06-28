@@ -171,6 +171,7 @@ def verify_session_fingerprint():
     if 'fingerprint' in session:
         current_fingerprint = generate_fingerprint(request)
         stored_fingerprint = session.get('fingerprint')
+        print(f"Current fingerprint: {current_fingerprint}, Stored fingerprint: {stored_fingerprint}")
         
         if current_fingerprint != stored_fingerprint:
             # Log potential session hijacking attempt
