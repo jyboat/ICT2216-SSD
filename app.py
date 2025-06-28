@@ -13,6 +13,7 @@ from wtforms import StringField, SubmitField, PasswordField
 from wtforms.validators import DataRequired, Email, Length, EqualTo, Regexp
 from itsdangerous import URLSafeTimedSerializer, SignatureExpired, BadSignature
 from flask_mail import Mail, Message
+from werkzeug.middleware.proxy_fix import ProxyFix
 import bleach
 import re
 import logging
@@ -22,10 +23,14 @@ import qrcode
 import io
 import base64
 import requests
+import hashlib
 
 load_dotenv()  # Load environment variables from .env
 
 app = Flask(__name__)
+
+#Make flask trust proxy headers
+app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1)
 
 # bcrypt hashing
 app.secret_key = os.getenv("SECRET_KEY")
@@ -103,10 +108,24 @@ def is_valid_session():
 def generate_fingerprint(request):
     # Create a fingerprint based on user attributes
     user_agent = request.headers.get('User-Agent', '')
-    # Use partial IP to allow for normal IP changes
-    ip_partial = '.'.join(request.remote_addr.split('.')[:3]) + '.0'
     
-    import hashlib
+    # Get the client's real IP - prefer X-Real-IP since it's simpler with Nginx
+    real_ip = request.headers.get('X-Real-IP')
+    if not real_ip:
+        # Fall back to X-Forwarded-For if X-Real-IP is not set
+        forwarded_for = request.headers.get('X-Forwarded-For')
+        if forwarded_for:
+            real_ip = forwarded_for.split(',')[0].strip()
+        else:
+            real_ip = request.remote_addr
+    
+    # Use partial IP to allow for normal IP changes
+    ip_parts = real_ip.split('.')
+    if len(ip_parts) == 4:  # IPv4
+        ip_partial = '.'.join(ip_parts[:3]) + '.0'
+    else:
+        ip_partial = real_ip  # Handle IPv6 or unusual formats
+    
     fingerprint = hashlib.sha256(f"{user_agent}|{ip_partial}".encode()).hexdigest()
     return fingerprint
 
