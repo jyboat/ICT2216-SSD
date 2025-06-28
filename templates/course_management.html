@@ -16,6 +16,7 @@
 
 
   <form method="post" class="mb-5">
+    {{ csrf_token() }}
     <div class="row g-2">
       <div class="col-md-3">
         <input
@@ -77,6 +78,7 @@
             style="display:inline;"
             onsubmit="return confirm('Delete this course?');"
           >
+            {{ csrf_token() }}
             <button type="submit" class="btn btn-sm btn-danger">
               Delete
             </button>

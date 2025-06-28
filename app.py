@@ -1,5 +1,6 @@
 from dotenv import load_dotenv
 from flask import Flask, render_template, request, redirect, url_for, send_from_directory, session, Response, make_response, abort
+from flask_wtf import CSRFProtect
 from werkzeug.utils import secure_filename
 from urllib.parse import urlparse
 from collections import defaultdict
@@ -24,7 +25,7 @@ app = Flask(__name__)
 # bcrypt hashing
 app.secret_key = os.getenv("SECRET_KEY")
 bcrypt = Bcrypt(app)
-
+csrf = CSRFProtect(app)
 # cf key
 cf_secret_key = os.getenv("CF_SECRET_KEY")
 # session timeout

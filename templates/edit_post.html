@@ -5,6 +5,7 @@
 <div class="container mt-4">
     <h3>Edit Post</h3>
     <form method="POST">
+        {{ csrf_token() }}
         <div class="mb-3">
             <textarea name="content" required class="form-control" rows="5">{{ content }}</textarea>
         </div>

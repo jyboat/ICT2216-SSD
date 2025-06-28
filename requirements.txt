@@ -8,3 +8,4 @@ qrcode
 Pillow
 requests
 pytest
+flask-wtf

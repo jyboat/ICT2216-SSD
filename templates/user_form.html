@@ -6,6 +6,7 @@
     <div class="card p-4">
         <h3>{{ action }} User</h3>
         <form method="post">
+            {{ csrf_token() }}
             <div class="mb-3">
                 <label class="form-label">Name</label>
                 <input type="text" class="form-control" name="name" required value="{{ user[0] if user else '' }}">
