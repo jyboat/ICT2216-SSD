@@ -51,6 +51,7 @@
         <p>Enter the 6-digit code from your authenticator app.</p>
 
         <form method="POST">
+            {{ csrf_token() }}
             <input type="text" name="otp" maxlength="6" pattern="\d{6}" required placeholder="123456">
             <br>
             <button type="submit">Verify</button>
