@@ -208,6 +208,13 @@ def security_check():
     if is_session_expired():
         return redirect(url_for('login', error='session_expired'))
 
+
+
+@app.route("/")
+def index():
+    success = request.args.get('success') == '1'
+    return render_template("login.html", hide_header=True, success=success)
+
 @app.route('/ip-check')
 def ip_check():
     """Debug endpoint to check all IP-related headers"""
@@ -222,11 +229,6 @@ def ip_check():
     <h1>IP Address Information</h1>
     <pre>{str(ip_info)}</pre>
     """
-
-@app.route("/")
-def index():
-    success = request.args.get('success') == '1'
-    return render_template("login.html", hide_header=True, success=success)
 
 @app.route("/home")
 def home():
