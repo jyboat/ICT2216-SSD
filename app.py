@@ -41,13 +41,9 @@ csrf = CSRFProtect(app)
 mail       = Mail(app)
 serializer = URLSafeTimedSerializer(app.secret_key)
 
-MAIL_SERVER            = os.getenv('MAIL_SERVER')
-MAIL_PORT              = int(os.getenv('MAIL_PORT', 587))
-MAIL_USE_TLS           = os.getenv('MAIL_USE_TLS', 'True') == 'True'
-MAIL_USE_SSL           = os.getenv('MAIL_USE_SSL', 'False') == 'True'
-MAIL_USERNAME          = os.getenv('MAIL_USERNAME')
-MAIL_PASSWORD          = os.getenv('MAIL_PASSWORD')
-MAIL_DEFAULT_SENDER    = (os.getenv('MAIL_DEFAULT_SENDER_NAME'),os.getenv('MAIL_DEFAULT_SENDER_EMAIL'))
+
+MAIL_USERNAME = os.getenv('MAIL_USERNAME')
+
 
 # cf key.
 cf_secret_key = os.getenv("CF_SECRET_KEY")
@@ -1301,12 +1297,8 @@ def forget_password():
         if exists:
             token = serializer.dumps(email, salt="password-reset-salt")
             reset_url = url_for("reset_password", token=token, _external=True)
-            try:
-                send_reset_email_via_sendgrid(email, reset_url)
-            except Exception as e:
-                app.logger.error("SendGrid send failed", exc_info=e)
-                flash("Sorry, we couldn’t send the reset email right now.", "danger")
-                return render_template("forget_password.html", form=form), 500
+            
+            send_reset_email_via_sendgrid(email, reset_url)
 
         return render_template("forget_password_sent.html")
 
