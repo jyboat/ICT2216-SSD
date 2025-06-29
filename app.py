@@ -12,7 +12,6 @@ from flask_wtf import FlaskForm
 from wtforms import StringField, SubmitField, PasswordField
 from wtforms.validators import DataRequired, Email, Length, EqualTo, Regexp
 from itsdangerous import URLSafeTimedSerializer, SignatureExpired, BadSignature
-from flask_mail import Mail, Message
 from werkzeug.middleware.proxy_fix import ProxyFix
 from sendgrid.helpers.mail import Mail as SGMail
 from sendgrid import SendGridAPIClient
@@ -38,7 +37,6 @@ app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1)
 app.secret_key = os.getenv("SECRET_KEY")
 bcrypt = Bcrypt(app)
 csrf = CSRFProtect(app)
-mail       = Mail(app)
 serializer = URLSafeTimedSerializer(app.secret_key)
 
 
