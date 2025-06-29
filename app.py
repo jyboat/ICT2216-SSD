@@ -14,6 +14,8 @@ from wtforms.validators import DataRequired, Email, Length, EqualTo, Regexp
 from itsdangerous import URLSafeTimedSerializer, SignatureExpired, BadSignature
 from flask_mail import Mail, Message
 from werkzeug.middleware.proxy_fix import ProxyFix
+from sendgrid.helpers.mail import Mail as SGMail
+from sendgrid import SendGridAPIClient
 import bleach
 import re
 import logging
@@ -1253,9 +1255,6 @@ def delete_course(course_id):
     cur.close()
     return redirect(url_for('manage_courses'))
 
-
-
-
 @app.route("/logout")
 def logout():
     user_id = session.get('user_id')
@@ -1267,6 +1266,22 @@ def logout():
     session.clear()
     return redirect(url_for('index'))
 
+#Sendgrid API for mail
+def send_reset_email_via_sendgrid(to_email: str, reset_url: str):
+    message = SGMail(
+        from_email="no-reply@yourdomain.com",
+        to_emails=to_email,
+        subject="Password Reset Request",
+        html_content=(
+            "<p>Hi,</p>"
+            f"<p>To reset your password, click <a href='{reset_url}'>here</a>.</p>"
+            "<p>If you did not request this, you can ignore this email.</p>"
+        )
+    )
+    sg = SendGridAPIClient(os.environ["SENDGRID_API_KEY"])
+    resp = sg.send(message)
+    if resp.status_code >= 400:
+        raise Exception(f"SendGrid error {resp.status_code}")
 
 class ForgetPasswordForm(FlaskForm):
     email = StringField('Email', validators=[DataRequired(), Email()])
@@ -1286,19 +1301,12 @@ def forget_password():
         if exists:
             token = serializer.dumps(email, salt="password-reset-salt")
             reset_url = url_for("reset_password", token=token, _external=True)
-            msg = Message(
-                subject="Password Reset Request",
-                recipients=[email]
-            )
-            msg.body = f"""\
-            Hi,
-
-            To reset your password, click the link below:
-            {reset_url}
-
-            If you did not request a password reset, safely ignore this message.
-            """
-            mail.send(msg)
+            try:
+                send_reset_email_via_sendgrid(email, reset_url)
+            except Exception as e:
+                app.logger.error("SendGrid send failed", exc_info=e)
+                flash("Sorry, we couldn’t send the reset email right now.", "danger")
+                return render_template("forget_password.html", form=form), 500
 
         return render_template("forget_password_sent.html")
 

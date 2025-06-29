@@ -13,3 +13,4 @@ wtforms
 flask-mail
 itsdangerous
 email-validator
+sendgrid
