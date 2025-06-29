@@ -6,7 +6,7 @@
     <div class="card p-4">
         <h3 class="mb-3">Upload Material</h3>
         <form method="post" enctype="multipart/form-data">
-            {{ csrf_token() }}
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <div class="mb-3">
                 <label class="form-label">Title</label>
                 <input type="text" class="form-control" name="title" required>

@@ -44,7 +44,7 @@
                         <button type="submit" class="btn btn-sm btn-outline-danger" aria-label="Delete">
                             <i class="fas fa-trash"></i>
                         </button>
-                    {{ csrf_token() }}
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                     </form>
                     <a href="{{ url_for('edit_announcement', course_id=course_id, announcement_id=a[2]) }}"
                     class="btn btn-sm btn-outline-secondary" aria-label="Edit">

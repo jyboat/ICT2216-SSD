@@ -8,7 +8,7 @@
 
         {% if role == 'educator' %}
         <form method="post">
-            {{ csrf_token() }}
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <div class="mb-3">
                 <label class="form-label">Title</label>
                 <input type="text" class="form-control" name="title" required>

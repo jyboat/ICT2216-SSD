@@ -7,7 +7,7 @@
 
         <!-- New thread form -->
         <form method="POST" class="mb-4">
-            {{ csrf_token() }}
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <div class="mb-3">
                 <textarea class="form-control" name="content" placeholder="Start a new thread..." required></textarea>
             </div>
