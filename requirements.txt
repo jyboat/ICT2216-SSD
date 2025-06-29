@@ -12,3 +12,4 @@ flask-wtf
 wtforms
 flask-mail
 itsdangerous
+email-validator
