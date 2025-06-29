@@ -31,4 +31,3 @@ def test_register_password_mismatch(client):
         'confirm_password': 'password321'
     }, follow_redirects=True)
     assert b"Passwords do not match" in response.data
-
