@@ -1322,9 +1322,9 @@ def forget_password():
             """
             mail.send(msg)
 
-        return render_template("forgot_password_sent.html")
+        return render_template("forget_password_sent.html")
 
-    return render_template("forgot_password.html", form=form)
+    return render_template("forget_password.html", form=form)
 
 
 class ResetPasswordForm(FlaskForm):
@@ -1358,10 +1358,10 @@ def reset_password(token):
         )
     except SignatureExpired:
         flash("That link has expired. Please request a new one.", "warning")
-        return redirect(url_for("forgot_password"))
+        return redirect(url_for("forget_password"))
     except BadSignature:
         flash("Invalid reset link.", "danger")
-        return redirect(url_for("forgot_password"))
+        return redirect(url_for("forget_password"))
 
     form = ResetPasswordForm()
     if form.validate_on_submit():
