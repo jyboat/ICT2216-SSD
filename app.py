@@ -175,14 +175,6 @@ def security_check():
         current_fingerprint = generate_fingerprint(request)
         stored_fingerprint = session['fingerprint']
         
-        # Log for debugging
-        with open('fingerprint_debug.log', 'a') as f:
-            f.write(f"TIME: {datetime.now()}, PATH: {request.path}\n")
-            f.write(f"USER-AGENT: {request.headers.get('User-Agent')}\n")
-            f.write(f"REAL-IP: {request.headers.get('X-Real-IP')}\n")
-            f.write(f"STORED PRINT: {stored_fingerprint}\n")
-            f.write(f"CURRENT PRINT: {current_fingerprint}\n\n")
-        
         if current_fingerprint != stored_fingerprint:
             # Log potential session hijacking attempt
             suspicious_logger.warning(
@@ -215,21 +207,6 @@ def security_check():
 def index():
     success = request.args.get('success') == '1'
     return render_template("login.html", hide_header=True, success=success)
-
-@app.route('/ip-check')
-def ip_check():
-    """Debug endpoint to check all IP-related headers"""
-    ip_info = {
-        'Remote Addr': request.remote_addr,
-        'X-Forwarded-For': request.headers.get('X-Forwarded-For', 'Not set'),
-        'X-Real-IP': request.headers.get('X-Real-IP', 'Not set'),
-        'All Headers': dict(request.headers)
-    }
-    
-    return f"""
-    <h1>IP Address Information</h1>
-    <pre>{str(ip_info)}</pre>
-    """
 
 @app.route("/home")
 def home():
