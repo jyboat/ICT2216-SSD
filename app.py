@@ -1269,7 +1269,7 @@ def logout():
 #Sendgrid API for mail
 def send_reset_email_via_sendgrid(to_email: str, reset_url: str):
     message = SGMail(
-        from_email="no-reply@yourdomain.com",
+        from_email=MAIL_USERNAME,
         to_emails=to_email,
         subject="Password Reset Request",
         html_content=(
