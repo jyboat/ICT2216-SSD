@@ -1181,12 +1181,14 @@ def manage_courses():
 
     admin_id = get_current_user_id()
     cur = mysql.connection.cursor()
-
+    cur.execute("SELECT id, name FROM users WHERE role = 'educator' ORDER BY name")
+    educators = cur.fetchall() 
 
     if request.method == "POST" and request.form.get("course_code"):
         code        = request.form["course_code"].strip()
         name        = request.form["name"].strip()
         description = request.form["description"].strip()
+        educator_id = request.form.get("educator_id")
         if code and name:
             cur.execute(
                 """
@@ -1194,7 +1196,7 @@ def manage_courses():
                   (course_code, name, description, educator_id)
                 VALUES (%s, %s, %s, %s)
                 """,
-                (code, name, description, "")
+                (code, name, description, educator_id)
             )
             mysql.connection.commit()
 
@@ -1213,7 +1215,8 @@ def manage_courses():
     return render_template(
         "course_management.html",
         courses=courses,
-        user_name=user_name
+        user_name=user_name,
+        educators = educators
     )
 
 @app.route("/admin/courses/<int:course_id>/edit", methods=["GET", "POST"])

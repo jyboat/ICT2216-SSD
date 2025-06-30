@@ -41,6 +41,14 @@
           placeholder="Description"
         />
       </div>
+      <div class="col-md-2">
+        <select name="educator_id" class="form-select" required>
+          <option value="">Assign Educator…</option>
+          {% for ed in educators %}
+          <option value="{{ ed[0] }}">{{ ed[1] }} (ID: {{ ed[0] }})</option>
+          {% endfor %}
+        </select>
+      </div>
       <div class="col-md-1">
         <button type="submit" class="btn btn-primary w-100">
           Add
