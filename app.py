@@ -1205,7 +1205,7 @@ def manage_courses():
     user_name = cur.fetchone()[0]
 
     cur.execute("""
-      SELECT id, course_code, name, description
+      SELECT id, course_code, name, description, educator_id
         FROM courses
        ORDER BY course_code
     """)

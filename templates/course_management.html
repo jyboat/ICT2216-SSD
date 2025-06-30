@@ -65,16 +65,18 @@
         <th>Code</th>
         <th>Name</th>
         <th>Description</th>
+        <th>Educator</th>
         <th>Actions</th>
       </tr>
     </thead>
     <tbody>
-      {% for id, code, name, desc in courses %}
+      {% for id, code, name, desc, educator_id in courses %}
       <tr>
         <td>{{ id }}</td>
         <td>{{ code }}</td>
         <td>{{ name }}</td>
         <td>{{ desc }}</td>
+        <td>{{ educator_id }}</td>
         <td>
           <a
             href="{{ url_for('edit_course', course_id=id) }}"
