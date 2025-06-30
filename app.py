@@ -846,9 +846,9 @@ def add_user():
         selected_codes = request.form.getlist("course_codes")
 
         cur.execute("""
-            INSERT INTO users (name, email, password_hash, role)
-            VALUES (%s, %s, %s, %s)
-        """, (name, email, password, role))
+            INSERT INTO users (name, email, password_hash, role, totp_secret)
+            VALUES (%s, %s, %s, %s, %s)
+        """, (name, email, password, role, ""))
         mysql.connection.commit()
         new_user_id = cur.lastrowid
         for code in selected_codes:
