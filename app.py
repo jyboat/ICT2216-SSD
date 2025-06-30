@@ -868,8 +868,8 @@ def add_user():
     cur.close()
     return render_template("user_form.html", action="Add", user_name=user_name,course_codes=course_codes, assigned_codes=[])
 
-@app.route("/admin/users/<int:user_id>/edit", methods=["GET", "POST"])
-def edit_user(user_id):
+@app.route("/admin/users/<int:target_id>/edit", methods=["GET", "POST"])
+def edit_user(target_id):
     if 'user_id' not in session:
         return redirect(url_for('login')) 
     elif is_session_expired():
@@ -877,9 +877,9 @@ def edit_user(user_id):
     
     if session.get('role') != 'admin':
         abort(403, description="Admin access required")
-    user_id = get_current_user_id()
+    admin_id = get_current_user_id()
     cur = mysql.connection.cursor()
-    cur.execute("SELECT name FROM users WHERE id = %s", (user_id,))
+    cur.execute("SELECT name FROM users WHERE id = %s", (admin_id,))
     user_name = cur.fetchone()[0]
 
     cur.execute("SELECT course_code FROM courses ORDER BY course_code")
@@ -895,11 +895,11 @@ def edit_user(user_id):
             UPDATE users
             SET name = %s, email = %s, role = %s
             WHERE id = %s
-        """, (name, email, role, user_id))
+        """, (name, email, role, target_id))
 
         cur.execute(
             "DELETE FROM enrollments WHERE user_id = %s",
-            (user_id,)
+            (target_id,)
         )
 
         for code in selected_codes:
@@ -909,14 +909,14 @@ def edit_user(user_id):
                   %s,
                   (SELECT id FROM courses WHERE course_code = %s)
                 )
-            """, (user_id, code))
+            """, (target_id, code))
 
         mysql.connection.commit()
         cur.close()
 
         return redirect(url_for("manage_users"))
 
-    cur.execute("SELECT name, email, role FROM users WHERE id = %s", (user_id,))
+    cur.execute("SELECT name, email, role FROM users WHERE id = %s", (target_id,))
     user = cur.fetchone()
 
     cur.execute("""
@@ -924,7 +924,7 @@ def edit_user(user_id):
         FROM courses c
         JOIN enrollments e ON e.course_id = c.id
        WHERE e.user_id = %s
-    """, (user_id,))
+    """, (target_id,))
     assigned_codes = [row[0] for row in cur.fetchall()]
     cur.close()
 
