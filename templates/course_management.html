@@ -78,7 +78,7 @@
             style="display:inline;"
             onsubmit="return confirm('Delete this course?');"
           >
-            {{ csrf_token() }}
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <button type="submit" class="btn btn-sm btn-danger">
               Delete
             </button>
