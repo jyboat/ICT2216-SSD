@@ -941,7 +941,6 @@ def delete_user(user_id):
 
     if session.get('role') != 'admin':
         abort(403, description="Admin access required")
-    user_id = get_current_user_id()
     cur = mysql.connection.cursor()
     cur.execute("DELETE FROM users WHERE id = %s", (user_id,))
     mysql.connection.commit()
