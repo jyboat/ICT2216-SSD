@@ -834,24 +834,39 @@ def add_user():
     cur = mysql.connection.cursor()
     cur.execute("SELECT name FROM users WHERE id = %s", (user_id,))
     user_name = cur.fetchone()[0]
+    cur.execute("SELECT course_code FROM courses ORDER BY course_code")
+    course_codes = [r[0] for r in cur.fetchall()]
+
 
     if request.method == "POST":
         name = request.form["name"]
         email = request.form["email"]
         password = request.form["password"]
         role = request.form["role"]
+        selected_codes = request.form.getlist("course_codes")
 
         cur.execute("""
             INSERT INTO users (name, email, password_hash, role)
             VALUES (%s, %s, %s, %s)
         """, (name, email, password, role))
         mysql.connection.commit()
+        new_user_id = cur.lastrowid
+        for code in selected_codes:
+            cur.execute("""
+                INSERT INTO enrollments (user_id, course_id)
+                VALUES (
+                  %s,
+                  (SELECT id FROM courses WHERE course_code = %s)
+                )
+            """, (new_user_id, code))
+        mysql.connection.commit()
+
         cur.close()
 
         return redirect(url_for("manage_users"))
 
     cur.close()
-    return render_template("user_form.html", action="Add", user_name=user_name)
+    return render_template("user_form.html", action="Add", user_name=user_name,course_codes=course_codes, assigned_codes=[])
 
 @app.route("/admin/users/<int:user_id>/edit", methods=["GET", "POST"])
 def edit_user(user_id):
