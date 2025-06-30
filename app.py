@@ -399,6 +399,9 @@ def delete_material(material_id):
     return redirect(url_for("view_course", course_id=course_id))
 
 
+from flask import abort, redirect, render_template, request, session, url_for
+import bleach
+
 @app.route("/courses/<int:course_id>/announcement/<int:announcement_id>/edit", methods=["GET", "POST"])
 def edit_announcement(course_id, announcement_id):
     if 'user_id' not in session:
@@ -427,6 +430,8 @@ def edit_announcement(course_id, announcement_id):
     if request.method == "POST":
         new_title = request.form["title"].strip()
         new_content = request.form["content"].strip()
+        new_title = bleach.clean(new_title, tags=[], strip=True)
+        new_content = bleach.clean(new_content, tags=['b', 'i', 'u', 'strong', 'em', 'ul', 'ol', 'li', 'p', 'br'], strip=True)
 
         cur.execute("""
             UPDATE announcements
@@ -441,6 +446,7 @@ def edit_announcement(course_id, announcement_id):
     cur.close()
     return render_template("edit_announcement.html", title=current_title, content=current_content,
                            course_id=course_id, announcement_id=announcement_id)
+
 
 
 @app.route("/courses/<int:course_id>/upload", methods=["GET", "POST"])
@@ -688,7 +694,9 @@ def edit_post(post_id):
 
     if request.method == "POST":
         new_content = request.form["content"]
-        cur.execute("UPDATE forum_posts SET content = %s WHERE id = %s", (new_content, post_id))
+        safe_content = bleach.clean(new_content, tags=[], attributes={}, strip=True)
+
+        cur.execute("UPDATE forum_posts SET content = %s WHERE id = %s", (safe_content, post_id))
         mysql.connection.commit()
 
         cur.execute("SELECT course_id FROM forum_threads WHERE id = %s", (thread_id,))
@@ -738,7 +746,6 @@ def delete_post(post_id):
 
     return redirect(url_for("home"))
 
-
 @app.route("/courses/<int:course_id>/announcement", methods=["GET", "POST"])
 def post_announcement(course_id):
     if 'user_id' not in session:
@@ -748,14 +755,24 @@ def post_announcement(course_id):
     
     user_id = get_current_user_id()
     cur = mysql.connection.cursor()
-    cur.execute("SELECT role FROM users WHERE id = %s", (user_id,))
-    role = cur.fetchone()[0]
-    cur.execute("SELECT name FROM users WHERE id = %s", (user_id,))
-    user_name = cur.fetchone()[0]
+
+    # Fetch user role and name
+    cur.execute("SELECT role, name FROM users WHERE id = %s", (user_id,))
+    result = cur.fetchone()
+    if not result:
+        cur.close()
+        abort(403, description="User not found")
+
+    role, user_name = result
 
     if request.method == "POST" and role == "educator":
-        title = request.form["title"]
-        content = request.form["content"]
+        title = bleach.clean(request.form["title"], tags=[], attributes={}, strip=True)
+        content = bleach.clean(
+            request.form["content"],
+            tags=["b", "i", "u", "strong", "em", "br", "p"],  
+            attributes={},
+            strip=True
+        )
 
         cur.execute("SELECT 1 FROM courses WHERE id = %s AND educator_id = %s", (course_id, user_id))
         allowed = cur.fetchone()
