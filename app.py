@@ -1229,38 +1229,44 @@ def edit_course(course_id):
         abort(403, description="Admin access required")
 
     cur = mysql.connection.cursor()
+    cur.execute("SELECT id, name FROM users WHERE role = 'educator' ORDER BY name")
+    educators = cur.fetchall()
 
     if request.method == "POST":
         code = bleach.clean(request.form["course_code"].strip(), tags=[], strip=True)
         name = bleach.clean(request.form["name"].strip(), tags=[], strip=True)
         description = bleach.clean(request.form["description"].strip(), tags=[], strip=True)
+        educator_id = request.form.get("educator_id", type=int)
 
         if code and name and len(code) <= 10 and len(name) <= 100:
             cur.execute("""
                 UPDATE courses
                    SET course_code = %s,
                        name = %s,
-                       description = %s
+                       description = %s,
+                       educator_id   = %s
                  WHERE id = %s
-            """, (code, name, description, course_id))
+            """, (code, name, description, educator_id, course_id))
             mysql.connection.commit()
             cur.close()
             return redirect(url_for('manage_courses'))
 
-    cur.execute("SELECT course_code, name, description FROM courses WHERE id = %s", (course_id,))
+    cur.execute("SELECT course_code, name, description, educator_id FROM courses WHERE id = %s", (course_id,))
     row = cur.fetchone()
     cur.close()
 
     if not row:
         abort(404)
 
-    course_code, course_name, course_desc = row
+    course_code, course_name, course_desc, current_educator_id = row
     return render_template(
         "course_edit.html",
         course_id=course_id,
         course_code=course_code,
         course_name=course_name,
-        course_desc=course_desc
+        course_desc= course_desc,
+        educators = educators,
+        current_educator_id = current_educator_id
     )
 
 @app.route("/admin/courses/<int:course_id>/delete", methods=["POST"])
