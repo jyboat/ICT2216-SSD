@@ -1179,7 +1179,7 @@ def manage_courses():
     if session.get('role') != 'admin':
         abort(403, description="Admin access required")
 
-    user_id = get_current_user_id()
+    admin_id = get_current_user_id()
     cur = mysql.connection.cursor()
 
 
@@ -1194,12 +1194,12 @@ def manage_courses():
                   (course_code, name, description, educator_id)
                 VALUES (%s, %s, %s, %s)
                 """,
-                (code, name, description, user_id)
+                (code, name, description, "")
             )
             mysql.connection.commit()
 
 
-    cur.execute("SELECT name FROM users WHERE id = %s", (user_id,))
+    cur.execute("SELECT name FROM users WHERE id = %s", (admin_id,))
     user_name = cur.fetchone()[0]
 
     cur.execute("""
