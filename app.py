@@ -869,7 +869,7 @@ def add_user():
     return render_template("user_form.html", action="Add", user_name=user_name,course_codes=course_codes, assigned_codes=[])
 
 @app.route("/admin/users/<int:user_id>/edit", methods=["GET", "POST"])
-def edit_user(user_id):
+def edit_user(users_id):
     if 'user_id' not in session:
         return redirect(url_for('login')) 
     elif is_session_expired():
