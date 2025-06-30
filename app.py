@@ -800,9 +800,9 @@ def manage_users():
     
     if session.get('role') != 'admin':
         abort(403, description="Admin access required")
-    user_id = get_current_user_id()
+    admin_id = get_current_user_id()
     cur = mysql.connection.cursor()
-    cur.execute("SELECT name FROM users WHERE id = %s", (user_id,))
+    cur.execute("SELECT name FROM users WHERE id = %s", (admin_id,))
     user_name = cur.fetchone()[0]
     cur.execute("""
         SELECT
@@ -834,24 +834,39 @@ def add_user():
     cur = mysql.connection.cursor()
     cur.execute("SELECT name FROM users WHERE id = %s", (user_id,))
     user_name = cur.fetchone()[0]
+    cur.execute("SELECT course_code FROM courses ORDER BY course_code")
+    course_codes = [r[0] for r in cur.fetchall()]
+
 
     if request.method == "POST":
         name = request.form["name"]
         email = request.form["email"]
         password = request.form["password"]
         role = request.form["role"]
+        selected_codes = request.form.getlist("course_codes")
 
         cur.execute("""
-            INSERT INTO users (name, email, password_hash, role)
-            VALUES (%s, %s, %s, %s)
-        """, (name, email, password, role))
+            INSERT INTO users (name, email, password_hash, role, totp_secret)
+            VALUES (%s, %s, %s, %s, %s)
+        """, (name, email, password, role, ""))
         mysql.connection.commit()
+        new_user_id = cur.lastrowid
+        for code in selected_codes:
+            cur.execute("""
+                INSERT INTO enrollments (user_id, course_id)
+                VALUES (
+                  %s,
+                  (SELECT id FROM courses WHERE course_code = %s)
+                )
+            """, (new_user_id, code))
+        mysql.connection.commit()
+
         cur.close()
 
         return redirect(url_for("manage_users"))
 
     cur.close()
-    return render_template("user_form.html", action="Add", user_name=user_name)
+    return render_template("user_form.html", action="Add", user_name=user_name,course_codes=course_codes, assigned_codes=[])
 
 @app.route("/admin/users/<int:user_id>/edit", methods=["GET", "POST"])
 def edit_user(user_id):
@@ -862,9 +877,9 @@ def edit_user(user_id):
     
     if session.get('role') != 'admin':
         abort(403, description="Admin access required")
-    user_id = get_current_user_id()
+    admin_id = get_current_user_id()
     cur = mysql.connection.cursor()
-    cur.execute("SELECT name FROM users WHERE id = %s", (user_id,))
+    cur.execute("SELECT name FROM users WHERE id = %s", (admin_id,))
     user_name = cur.fetchone()[0]
 
     cur.execute("SELECT course_code FROM courses ORDER BY course_code")
@@ -926,7 +941,6 @@ def delete_user(user_id):
 
     if session.get('role') != 'admin':
         abort(403, description="Admin access required")
-    user_id = get_current_user_id()
     cur = mysql.connection.cursor()
     cur.execute("DELETE FROM users WHERE id = %s", (user_id,))
     mysql.connection.commit()
@@ -1183,14 +1197,16 @@ def manage_courses():
     if session.get('role') != 'admin':
         abort(403, description="Admin access required")
 
-    user_id = get_current_user_id()
+    admin_id = get_current_user_id()
     cur = mysql.connection.cursor()
-
+    cur.execute("SELECT id, name FROM users WHERE role = 'educator' ORDER BY name")
+    educators = cur.fetchall() 
 
     if request.method == "POST" and request.form.get("course_code"):
         code        = request.form["course_code"].strip()
         name        = request.form["name"].strip()
         description = request.form["description"].strip()
+        educator_id = request.form.get("educator_id")
         if code and name:
             cur.execute(
                 """
@@ -1198,16 +1214,16 @@ def manage_courses():
                   (course_code, name, description, educator_id)
                 VALUES (%s, %s, %s, %s)
                 """,
-                (code, name, description, user_id)
+                (code, name, description, educator_id)
             )
             mysql.connection.commit()
 
 
-    cur.execute("SELECT name FROM users WHERE id = %s", (user_id,))
+    cur.execute("SELECT name FROM users WHERE id = %s", (admin_id,))
     user_name = cur.fetchone()[0]
 
     cur.execute("""
-      SELECT id, course_code, name, description
+      SELECT id, course_code, name, description, educator_id
         FROM courses
        ORDER BY course_code
     """)
@@ -1217,7 +1233,8 @@ def manage_courses():
     return render_template(
         "course_management.html",
         courses=courses,
-        user_name=user_name
+        user_name=user_name,
+        educators = educators
     )
 
 @app.route("/admin/courses/<int:course_id>/edit", methods=["GET", "POST"])
@@ -1230,38 +1247,44 @@ def edit_course(course_id):
         abort(403, description="Admin access required")
 
     cur = mysql.connection.cursor()
+    cur.execute("SELECT id, name FROM users WHERE role = 'educator' ORDER BY name")
+    educators = cur.fetchall()
 
     if request.method == "POST":
         code = bleach.clean(request.form["course_code"].strip(), tags=[], strip=True)
         name = bleach.clean(request.form["name"].strip(), tags=[], strip=True)
         description = bleach.clean(request.form["description"].strip(), tags=[], strip=True)
+        educator_id = request.form.get("educator_id", type=int)
 
         if code and name and len(code) <= 10 and len(name) <= 100:
             cur.execute("""
                 UPDATE courses
                    SET course_code = %s,
                        name = %s,
-                       description = %s
+                       description = %s,
+                       educator_id   = %s
                  WHERE id = %s
-            """, (code, name, description, course_id))
+            """, (code, name, description, educator_id, course_id))
             mysql.connection.commit()
             cur.close()
             return redirect(url_for('manage_courses'))
 
-    cur.execute("SELECT course_code, name, description FROM courses WHERE id = %s", (course_id,))
+    cur.execute("SELECT course_code, name, description, educator_id FROM courses WHERE id = %s", (course_id,))
     row = cur.fetchone()
     cur.close()
 
     if not row:
         abort(404)
 
-    course_code, course_name, course_desc = row
+    course_code, course_name, course_desc, current_educator_id = row
     return render_template(
         "course_edit.html",
         course_id=course_id,
         course_code=course_code,
         course_name=course_name,
-        course_desc=course_desc
+        course_desc= course_desc,
+        educators = educators,
+        current_educator_id = current_educator_id
     )
 
 @app.route("/admin/courses/<int:course_id>/delete", methods=["POST"])
