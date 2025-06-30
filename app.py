@@ -928,7 +928,7 @@ def edit_user(target_id):
     assigned_codes = [row[0] for row in cur.fetchall()]
     cur.close()
 
-    return render_template("user_form.html", action="Edit", user=user, user_id=user_id, user_name=user_name,
+    return render_template("user_form.html", action="Edit", user=user, user_id=target_id, user_name=user_name,
         course_codes=course_codes,
         assigned_codes=assigned_codes)
 
