@@ -823,7 +823,7 @@ def manage_users():
         LEFT JOIN (
           SELECT
             e.user_id,
-            GROUP_CONCAT(c.course_code
+            GROUP_CONCAT(DISTINCT c.course_code
                          ORDER BY c.course_code
                          SEPARATOR ', '
                         ) AS student_courses
