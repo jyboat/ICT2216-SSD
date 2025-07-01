@@ -1350,9 +1350,19 @@ def send_reset_email_via_sendgrid(to_email: str, reset_url: str):
         from_email=MAIL_USERNAME,
         to_emails=to_email,
         subject="Password Reset Request",
+        
+        plain_text_content=(
+            "Hi,\n\n"
+            "To reset your password, visit:\n"
+            f"{reset_url}\n\n"
+            "If you did not request this, just ignore this email."
+        ),
+
         html_content=(
             "<p>Hi,</p>"
             f"<p>To reset your password, click <a href='{reset_url}'>here</a>.</p>"
+            f"<p>To reset your password, click "
+            f"<a href='{reset_url}'>here</a>.</p>"
             "<p>If you did not request this, you can ignore this email.</p>"
         )
     )
@@ -1378,15 +1388,19 @@ def forget_password():
         email = form.email.data.strip().lower()
         
         cur = mysql.connection.cursor()
-        cur.execute("SELECT 1 FROM users WHERE email = %s", (email,))
-        exists = cur.fetchone() is not None
+        cur.execute(
+            "SELECT role FROM users WHERE email = %s",
+            (email,)
+        )
+        row = cur.fetchone()
         cur.close()
-        
-        if exists:
-            token = serializer.dumps(email, salt="password-reset-salt")
-            reset_url = url_for("reset_password", token=token, _external=True)
-            
-            send_reset_email_via_sendgrid(email, reset_url)
+
+        if not row or row[0].lower() == "admin":
+            return render_template("forget_password_sent.html")
+
+        token     = serializer.dumps(email, salt="password-reset-salt")
+        reset_url = url_for("reset_password", token=token, _external=True)
+        send_reset_email_via_sendgrid(email, reset_url)
 
         return render_template("forget_password_sent.html")
 
