@@ -879,10 +879,11 @@ def add_user():
         role = request.form["role"]
         selected_codes = request.form.getlist("course_codes")
 
+        hashed_pw = bcrypt.generate_password_hash(password).decode('utf-8')
         cur.execute("""
             INSERT INTO users (name, email, password_hash, role, totp_secret)
             VALUES (%s, %s, %s, %s, %s)
-        """, (name, email, password, role, ""))
+        """, (name, email, hashed_pw, role, ""))
         mysql.connection.commit()
         new_user_id = cur.lastrowid
         for code in selected_codes:
