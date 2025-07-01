@@ -14,6 +14,7 @@ from wtforms.validators import DataRequired, Email, Length, EqualTo, Regexp
 from itsdangerous import URLSafeTimedSerializer, SignatureExpired, BadSignature
 from werkzeug.middleware.proxy_fix import ProxyFix
 from sendgrid.helpers.mail import Mail as SGMail
+from sendgrid.helpers.mail import TrackingSettings, ClickTracking, OpenTracking
 from sendgrid import SendGridAPIClient
 import bleach
 import re
@@ -1325,6 +1326,12 @@ def send_reset_email_via_sendgrid(to_email: str, reset_url: str):
             "<p>If you did not request this, you can ignore this email.</p>"
         )
     )
+     
+    message.tracking_settings = TrackingSettings(
+        click_tracking=ClickTracking(enable=False, enable_text=False),
+        open_tracking=OpenTracking(enable=False)
+    )
+
     sg = SendGridAPIClient(os.environ["SENDGRID_API_KEY"])
     resp = sg.send(message)
     if resp.status_code >= 400:
