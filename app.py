@@ -919,15 +919,20 @@ def edit_user(user_id):
     if request.method == "POST":
         name = request.form["name"]
         email = request.form["email"]
-        role = request.form["role"]
+        new_role = request.form["role"]
         selected_codes = request.form.getlist("course_codes")
+        cur.execute("SELECT role FROM users WHERE id = %s", (user_id,))
+        old_role = cur.fetchone()[0]
 
         cur.execute("""
             UPDATE users
             SET name = %s, email = %s, role = %s
             WHERE id = %s
-        """, (name, email, role, user_id))
+        """, (name, email, new_role, user_id))
 
+        if old_role == 'educator' and new_role != 'educator':
+            cur.execute("DELETE FROM courses WHERE educator_id = %s", (user_id,))
+        
         cur.execute(
             "DELETE FROM enrollments WHERE user_id = %s",
             (user_id,)
