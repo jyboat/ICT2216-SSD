@@ -811,10 +811,38 @@ def manage_users():
           u.name,
           u.email,
           u.role,
-          IFNULL(GROUP_CONCAT(c.course_code ORDER BY c.course_code SEPARATOR ', '), '') AS courses
+          IFNULL(
+            CONCAT_WS(', ',
+              sc.student_courses,
+              tc.teaching_courses
+            ),
+            ''
+          ) AS courses
         FROM users u
-        LEFT JOIN enrollments e   ON e.user_id   = u.id
-        LEFT JOIN courses c       ON e.course_id = c.id
+        /* sub-query: student enrollments */
+        LEFT JOIN (
+          SELECT
+            e.user_id,
+            GROUP_CONCAT(c.course_code
+                         ORDER BY c.course_code
+                         SEPARATOR ', '
+                        ) AS student_courses
+          FROM enrollments e
+          JOIN courses c ON c.id = e.course_id
+          GROUP BY e.user_id
+        ) sc ON sc.user_id = u.id
+        /* sub-query: courses they teach */
+        LEFT JOIN (
+          SELECT
+            c.educator_id AS user_id,
+            GROUP_CONCAT(c.course_code
+                         ORDER BY c.course_code
+                         SEPARATOR ', '
+                        ) AS teaching_courses
+          FROM courses c
+          GROUP BY c.educator_id
+        ) tc ON tc.user_id = u.id
+
         GROUP BY u.id, u.name, u.email, u.role
         ORDER BY u.name
     """)
