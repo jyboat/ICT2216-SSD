@@ -54,7 +54,9 @@ login_attempts = defaultdict(list)
 BLOCK_THRESHOLD = 5
 BLOCK_WINDOW = 600  # seconds
 
-
+app.config['SESSION_TYPE'] = 'redis' 
+app.config['SESSION_PERMANENT'] = False
+app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(hours=1) 
 app.config['SESSION_COOKIE_SECURE'] = True  # Only send cookies over HTTPS
 app.config['SESSION_COOKIE_HTTPONLY'] = True  # Prevent JavaScript access
 app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'  # Controls cross-site requests
@@ -122,8 +124,9 @@ def generate_fingerprint(request):
     else:
         ip_partial = real_ip  # Handle IPv6 or unusual formats
     
-    # Create fingerprint
-    fingerprint_str = f"{user_agent}|{ip_partial}"
+    # Create fingerprint WITH server secret
+    server_secret = app.config['SECRET_KEY']  # Use your Flask secret key
+    fingerprint_str = f"{user_agent}|{ip_partial}|{server_secret}"
     
     fingerprint = hashlib.sha256(fingerprint_str.encode()).hexdigest()
     
