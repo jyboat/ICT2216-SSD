@@ -806,47 +806,49 @@ def manage_users():
     cur.execute("SELECT name FROM users WHERE id = %s", (admin_id,))
     user_name = cur.fetchone()[0]
     cur.execute("""
-        SELECT
-          u.id,
-          u.name,
-          u.email,
-          u.role,
-          IFNULL(
-            CONCAT_WS(', ',
-              sc.student_courses,
-              tc.teaching_courses
-            ),
-            ''
-          ) AS courses
-        FROM users u
-        /* sub-query: student enrollments */
-        LEFT JOIN (
-          SELECT
-            e.user_id,
-            GROUP_CONCAT(DISTINCT c.course_code
-                         ORDER BY c.course_code
-                         SEPARATOR ', '
-                        ) AS student_courses
-          FROM enrollments e
-          JOIN courses c ON c.id = e.course_id
-          GROUP BY e.user_id
-        ) sc ON sc.user_id = u.id
-        /* sub-query: courses they teach */
-        LEFT JOIN (
-          SELECT
-            c.educator_id AS user_id,
-            GROUP_CONCAT(DISTINCT c.course_code
-                         ORDER BY c.course_code
-                         SEPARATOR ', '
-                        ) AS teaching_courses
-          FROM courses c
-          GROUP BY c.educator_id
-        ) tc ON tc.user_id = u.id
+    SELECT
+      u.id,
+      u.name,
+      u.email,
+      u.role,
+      IFNULL(
+        GROUP_CONCAT(
+          DISTINCT ec.course_code
+          ORDER BY ec.course_code
+          SEPARATOR ', '
+        ),
+        ''
+      ) AS courses
+    FROM
+      users u
+    LEFT JOIN (
+      -- combine enrollments and teaching assignments into one set
+      SELECT
+        e.user_id,
+        c.course_code
+      FROM
+        enrollments e
+        JOIN courses c ON c.id = e.course_id
 
-        GROUP BY u.id, u.name, u.email, u.role
-        ORDER BY u.name
-    """)
+      UNION
+
+      SELECT
+        c.educator_id AS user_id,
+        c.course_code
+      FROM
+        courses c
+    ) ec
+      ON ec.user_id = u.id
+    GROUP BY
+      u.id,
+      u.name,
+      u.email,
+      u.role
+    ORDER BY
+      u.name
+""")
     users = cur.fetchall()
+
     cur.close()
     return render_template("user_management.html", users=users, user_name=user_name)
 
