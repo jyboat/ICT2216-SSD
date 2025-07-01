@@ -1067,11 +1067,11 @@ def login():
                     session.permanent = False
 
                 login_attempts[ip] = [] 
-                if user[6] is None:
+                if not user[6]:  
                     session['temp_new_user_email'] = email
-                    return redirect(url_for('setup_2fa'))   # Route for first-time TOTP setup
+                    return redirect(url_for('setup_2fa'))
                 else:
-                    return redirect(url_for('verify_2fa'))  # Normal 2FA flow
+                    return redirect(url_for('verify_2fa'))
             else:
                 suspicious_logger.warning(f"Failed login (wrong password) - email: {email}, IP: {request.remote_addr}")
                 log_to_database("WARNING", 401, 'Unauthenticated', request.remote_addr, "/login",
