@@ -205,6 +205,9 @@ def security_check():
 
 @app.route("/")
 def index():
+    if 'user_id' in session:
+        return redirect(url_for('home'))
+    
     success = request.args.get('success') == '1'
     return render_template("login.html", hide_header=True, success=success)
 
