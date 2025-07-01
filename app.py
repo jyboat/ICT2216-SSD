@@ -1238,16 +1238,29 @@ def manage_courses():
         name        = request.form["name"].strip()
         description = request.form["description"].strip()
         educator_id = request.form.get("educator_id")
-        if code and name:
-            cur.execute(
-                """
-                INSERT INTO courses
-                  (course_code, name, description, educator_id)
-                VALUES (%s, %s, %s, %s)
-                """,
-                (code, name, description, educator_id)
-            )
-            mysql.connection.commit()
+        if not code or not name:
+            flash("Course code and name are required.", "warning")
+        else:
+            # 1) check for an existing code
+            cur.execute("SELECT 1 FROM courses WHERE course_code = %s", (code,))
+            if cur.fetchone():
+                flash(f"Course code “{code}” already exists.", "warning")
+            else:
+                # 2) safe to insert
+                cur.execute(
+                    """
+                    INSERT INTO courses
+                      (course_code, name, description, educator_id)
+                    VALUES (%s, %s, %s, %s)
+                    """,
+                    (code, name, description, educator_id)
+                )
+                mysql.connection.commit()
+                flash(f"Course “{code}” added successfully.", "success")
+
+        # redirect so a page‐reload won’t re‐POST
+        cur.close()
+        return redirect(url_for("manage_courses"))
 
 
     cur.execute("SELECT name FROM users WHERE id = %s", (admin_id,))
@@ -1361,8 +1374,6 @@ def send_reset_email_via_sendgrid(to_email: str, reset_url: str):
         html_content=(
             "<p>Hi,</p>"
             f"<p>To reset your password, click <a href='{reset_url}'>here</a>.</p>"
-            f"<p>To reset your password, click "
-            f"<a href='{reset_url}'>here</a>.</p>"
             "<p>If you did not request this, you can ignore this email.</p>"
         )
     )
