@@ -1183,49 +1183,57 @@ def setup_2fa():
     cur.close()
 
     if not result:
+        log_to_database("ERROR", 404, 'Unauthenticated', request.remote_addr, "/setup-2fa", f"User not found for email: {email}")
         abort(404)
 
     user_id, user_name, role, totp_secret = result
 
-    # If no secret exists, generate a new one
-    if totp_secret is None:
+    # Generate a new TOTP secret if not already assigned
+    if not totp_secret:
         totp_secret = pyotp.random_base32()
-        session['pending_totp_secret'] = totp_secret  # Save it temporarily
-
+        session['pending_totp_secret'] = totp_secret
     else:
-        # Secret exists for some reason (in case of edge case)
         session['pending_totp_secret'] = totp_secret
 
     if request.method == 'POST':
         otp = request.form['otp']
-        totp = pyotp.TOTP(session['pending_totp_secret'])
+        totp = pyotp.TOTP(session.get('pending_totp_secret'))
 
         if totp.verify(otp):
-            # Finalize login and save the new TOTP secret
-            cur = mysql.connection.cursor()
-            new_token = os.urandom(32).hex()
-            cur.execute("UPDATE users SET session_token = %s, totp_secret = %s WHERE id = %s",
-                        (new_token, session['pending_totp_secret'], user_id))
-            mysql.connection.commit()
-            cur.close()
+            try:
+                cur = mysql.connection.cursor()
+                new_token = os.urandom(32).hex()
+                cur.execute("UPDATE users SET session_token = %s, totp_secret = %s WHERE id = %s",
+                            (new_token, session['pending_totp_secret'], user_id))
+                mysql.connection.commit()
+                cur.close()
 
-            # Login session
-            session['user_id'] = user_id
-            session['user_name'] = user_name
-            session['role'] = role
-            session['last_active'] = time.time()
-            session['session_token'] = new_token
-            session['fingerprint'] = generate_fingerprint(request)
+                # Finalize login session
+                session['user_id'] = user_id
+                session['user_name'] = user_name
+                session['role'] = role
+                session['last_active'] = time.time()
+                session['session_token'] = new_token
+                session['fingerprint'] = generate_fingerprint(request)
 
-            # Clean temp session values
-            session.pop('temp_new_user_email', None)
-            session.pop('pending_totp_secret', None)
+                # Cleanup
+                session.pop('temp_new_user_email', None)
+                session.pop('pending_totp_secret', None)
 
-            return redirect(url_for('home'))
+                log_to_database("INFO", 200, user_id, request.remote_addr, "/setup-2fa", "2FA setup completed successfully")
+                return redirect(url_for('home'))
 
-        return render_template("setup_2fa.html", qr_code_b64=generate_qr(session['pending_totp_secret'], email), error="Invalid OTP")
+            except Exception as e:
+                log_to_database("ERROR", 500, user_id, request.remote_addr, "/setup-2fa", f"Failed to save TOTP: {str(e)}")
+                return render_template("setup_2fa.html", qr_code_b64=generate_qr(session['pending_totp_secret'], email),
+                                       error="Failed to save 2FA. Please try again.")
+        else:
+            log_to_database("WARNING", 401, user_id, request.remote_addr, "/setup-2fa", "Invalid OTP during 2FA setup")
+            return render_template("setup_2fa.html", qr_code_b64=generate_qr(session['pending_totp_secret'], email),
+                                   error="Invalid OTP")
 
     return render_template("setup_2fa.html", qr_code_b64=generate_qr(session['pending_totp_secret'], email))
+
 
 
 
