@@ -1197,18 +1197,26 @@ def setup_2fa():
 
     if request.method == 'POST':
         otp = request.form['otp']
-        totp = pyotp.TOTP(session.get('pending_totp_secret'))
+        totp = pyotp.TOTP(session['pending_totp_secret'])
 
         if totp.verify(otp):
             try:
                 cur = mysql.connection.cursor()
                 new_token = os.urandom(32).hex()
-                cur.execute("UPDATE users SET session_token = %s, totp_secret = %s WHERE id = %s",
-                            (new_token, session['pending_totp_secret'], user_id))
+
+                cur.execute(
+                    "UPDATE users SET session_token = %s, totp_secret = %s WHERE id = %s",
+                    (new_token, session['pending_totp_secret'], user_id)
+                )
                 mysql.connection.commit()
+                rows_updated = cur.rowcount
                 cur.close()
 
-                # Finalize login session
+                if rows_updated == 0:
+                    log_to_database("ERROR", 500, user_id, request.remote_addr, "/setup-2fa", "TOTP secret not saved to DB")
+                    return render_template("setup_2fa.html", qr_code_b64=generate_qr(session['pending_totp_secret'], email), error="An error occurred saving your 2FA setup. Please try again.")
+
+                # Proceed with login
                 session['user_id'] = user_id
                 session['user_name'] = user_name
                 session['role'] = role
@@ -1216,23 +1224,14 @@ def setup_2fa():
                 session['session_token'] = new_token
                 session['fingerprint'] = generate_fingerprint(request)
 
-                # Cleanup
                 session.pop('temp_new_user_email', None)
                 session.pop('pending_totp_secret', None)
 
-                log_to_database("INFO", 200, user_id, request.remote_addr, "/setup-2fa", "2FA setup completed successfully")
                 return redirect(url_for('home'))
 
             except Exception as e:
-                log_to_database("ERROR", 500, user_id, request.remote_addr, "/setup-2fa", f"Failed to save TOTP: {str(e)}")
-                return render_template("setup_2fa.html", qr_code_b64=generate_qr(session['pending_totp_secret'], email),
-                                       error="Failed to save 2FA. Please try again.")
-        else:
-            log_to_database("WARNING", 401, user_id, request.remote_addr, "/setup-2fa", "Invalid OTP during 2FA setup")
-            return render_template("setup_2fa.html", qr_code_b64=generate_qr(session['pending_totp_secret'], email),
-                                   error="Invalid OTP")
-
-    return render_template("setup_2fa.html", qr_code_b64=generate_qr(session['pending_totp_secret'], email))
+                log_to_database("ERROR", 500, user_id, request.remote_addr, "/setup-2fa", f"Exception during TOTP DB update: {str(e)}")
+                return render_template("setup_2fa.html", qr_code_b64=generate_qr(session['pending_totp_secret'], email), error="Internal error. Please try again.")
 
 
 
