@@ -751,7 +751,7 @@ def delete_post(post_id):
     if parsed.path in safe_paths and not parsed.netloc and not parsed.scheme:
         return redirect(parsed.path)
 
-    return redirect(url_for("home"))
+    return redirect(url_for("course_forum", course_id=course_id))
 
 @app.route("/courses/<int:course_id>/announcement", methods=["GET", "POST"])
 def post_announcement(course_id):
