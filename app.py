@@ -1270,31 +1270,39 @@ def manage_courses():
     educators = cur.fetchall() 
 
     if request.method == "POST" and request.form.get("course_code"):
-        code        = request.form["course_code"].strip()
-        name        = request.form["name"].strip()
-        description = request.form["description"].strip()
-        educator_id = request.form.get("educator_id")
-        if not code or not name:
-            flash("Course code and name are required.", "warning")
+        code        = request.form.get("course_code", "").strip()
+        name        = request.form.get("name",        "").strip()
+        description = request.form.get("description", "").strip()
+        raw_edu     = request.form.get("educator_id", "")
+        if not code or len(code) > 20:
+            abort(400, "Course code is required (max 20 characters)")
+        if not name or len(name) > 255:
+            abort(400, "Course name is required (max 255 characters)")
+        if len(description) > 2000:
+            abort(400, "Description too long (max 2000 characters)")
+        try:
+            educator_id = int(raw_edu)
+        except ValueError:
+            abort(400, "Invalid educator selected")
+        if educator_id not in {e[0] for e in educators}:
+            abort(400, "Unknown educator")    
+        cur.execute("SELECT 1 FROM courses WHERE course_code = %s", (code,))
+        if cur.fetchone():
+            flash(f"Course code “{code}” already exists.", "warning")
         else:
-            # 1) check for an existing code
-            cur.execute("SELECT 1 FROM courses WHERE course_code = %s", (code,))
-            if cur.fetchone():
-                flash(f"Course code “{code}” already exists.", "warning")
-            else:
-                # 2) safe to insert
-                cur.execute(
-                    """
-                    INSERT INTO courses
-                      (course_code, name, description, educator_id)
-                    VALUES (%s, %s, %s, %s)
-                    """,
-                    (code, name, description, educator_id)
-                )
-                mysql.connection.commit()
-                flash(f"Course “{code}” added successfully.", "success")
+            # 5) Final sanitize & insert
+            safe_code = bleach.clean(code, tags=[], strip=True)
+            safe_name = bleach.clean(name, tags=[], strip=True)
+            safe_desc = bleach.clean(description, tags=[], strip=True)
 
-        # redirect so a page‐reload won’t re‐POST
+            cur.execute("""
+                INSERT INTO courses
+                  (course_code, name, description, educator_id)
+                VALUES (%s, %s, %s, %s)
+            """, (safe_code, safe_name, safe_desc, educator_id))
+            mysql.connection.commit()
+            flash(f"Course “{safe_code}” added successfully.", "success")
+
         cur.close()
         return redirect(url_for("manage_courses"))
 
@@ -1331,10 +1339,37 @@ def edit_course(course_id):
     educators = cur.fetchall()
 
     if request.method == "POST":
-        code = bleach.clean(request.form["course_code"].strip(), tags=[], strip=True)
-        name = bleach.clean(request.form["name"].strip(), tags=[], strip=True)
-        description = bleach.clean(request.form["description"].strip(), tags=[], strip=True)
-        educator_id = request.form.get("educator_id", type=int)
+        code        = request.form.get("course_code", "").strip()
+        name        = request.form.get("name", "").strip()
+        description = request.form.get("description", "").strip()
+        educator_raw    = request.form.get("educator_id", "")
+        if not code or len(code) > 10:
+            abort(400, "Course code is required (max 10 chars)")
+        if not name or len(name) > 100:
+            abort(400, "Course name is required (max 100 chars)")
+        if len(description) > 2000:
+            abort(400, "Description too long (max 2000 chars)")
+        
+        try:
+            educator_id = int(educator_raw)
+        except ValueError:
+            abort(400, "Invalid educator selected")
+
+        if educator_id not in {e[0] for e in educators}:
+            abort(400, "Unknown educator")
+        cur.execute(
+            "SELECT 1 FROM courses WHERE course_code = %s AND id != %s",
+            (code, course_id)
+        )
+        if cur.fetchone():
+            flash(f"Another course is already using code “{code}”.", "warning")
+        else:
+            # 5) sanitize & update
+            safe_code = bleach.clean(code, tags=[], strip=True)
+            safe_name = bleach.clean(name, tags=[], strip=True)
+            safe_desc = bleach.clean(description, tags=[], strip=True)
+
+
 
         if code and name and len(code) <= 10 and len(name) <= 100:
             cur.execute("""
@@ -1344,7 +1379,7 @@ def edit_course(course_id):
                        description = %s,
                        educator_id   = %s
                  WHERE id = %s
-            """, (code, name, description, educator_id, course_id))
+            """, (safe_code, safe_name, safe_desc, educator_id, course_id))
             mysql.connection.commit()
             cur.close()
             return redirect(url_for('manage_courses'))
@@ -1377,6 +1412,11 @@ def delete_course(course_id):
         abort(403, description="Admin access required")
 
     cur = mysql.connection.cursor()
+    cur.execute("SELECT 1 FROM courses WHERE id = %s", (course_id,))
+    if not cur.fetchone():
+        cur.close()
+        abort(404, "Course not found")
+        
     cur.execute("DELETE FROM courses WHERE id=%s", (course_id,))
     mysql.connection.commit()
     cur.close()
