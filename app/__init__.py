@@ -8,6 +8,7 @@ from .forum import forum_bp
 from .admin import admin_bp
 from .security import security_check
 
+# TODO: fix refactoring
 def create_app():
     app = Flask(__name__)
     app.config.from_object(Config)
