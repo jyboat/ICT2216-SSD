@@ -924,12 +924,19 @@ def edit_user(user_id):
     course_codes = [row[0] for row in cur.fetchall()]
 
     if request.method == "POST":
-        name = request.form["name"]
-        email = request.form["email"]
-        new_role = request.form["role"]
+        name     = request.form.get("name", "").strip()
+        email    = request.form.get("email", "").strip().lower()
+        new_role = request.form.get("role", "")
         selected_codes = request.form.getlist("course_codes")
         cur.execute("SELECT role FROM users WHERE id = %s", (user_id,))
         old_role = cur.fetchone()[0]
+        #validation
+        if not name or len(name) > 100:
+            abort(400, "Name is required (max 100 chars)")
+        if not re.match(r"[^@]+@[^@]+\.[^@]+", email):
+            abort(400, "Invalid email address")
+        if new_role not in ("student", "educator", "admin"):
+            abort(400, "Invalid role")
 
         cur.execute("""
             UPDATE users
@@ -985,6 +992,10 @@ def delete_user(user_id):
     if session.get('role') != 'admin':
         abort(403, description="Admin access required")
     cur = mysql.connection.cursor()
+    cur.execute("SELECT 1 FROM users WHERE id = %s", (user_id,))
+    if not cur.fetchone():
+        cur.close()
+        abort(404, "User not found")
     cur.execute("DELETE FROM users WHERE id = %s", (user_id,))
     mysql.connection.commit()
     cur.close()
