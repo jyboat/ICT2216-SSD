@@ -293,11 +293,11 @@ def download_material(material_id):
         """, (material_id, user_id))
     else:
         cur.close()
-        redirect(url_for('home'))
+        return redirect(url_for('home'))
 
     if not cur.fetchone():
         cur.close()
-        redirect(url_for('home'))
+        return redirect(url_for('home'))
 
     # Fetch file and metadata
     cur.execute("SELECT file_name, mime_type, file FROM materials WHERE id = %s", (material_id,))
@@ -508,7 +508,7 @@ def upload_material(course_id):
 
         if not allowed:
             cur.close()
-            redirect(url_for('home'))
+            return redirect(url_for('home'))
 
         # Insert into database
         cur.execute("""
@@ -593,7 +593,7 @@ def delete_announcement(course_id, announcement_id):
 
     if not cur.fetchone():
         cur.close()
-        redirect(url_for('home'))
+        return redirect(url_for('home'))
 
     cur.execute("DELETE FROM announcements WHERE id = %s", (announcement_id,))
     mysql.connection.commit()
@@ -700,7 +700,7 @@ def edit_post(post_id):
 
     if author_id != user_id and not is_educator(user_id):
         cur.close()
-        redirect(url_for('home'))
+        return redirect(url_for('home'))
 
     if request.method == "POST":
         new_content = request.form["content"]
@@ -740,7 +740,7 @@ def delete_post(post_id):
     author_id = result[0]
     if user_id != author_id and not is_educator(user_id):
         cur.close()
-        redirect(url_for('home'))
+        return redirect(url_for('home'))
 
     cur.execute("DELETE FROM forum_posts WHERE id = %s", (post_id,))
     mysql.connection.commit()
@@ -788,7 +788,7 @@ def post_announcement(course_id):
         allowed = cur.fetchone()
         if not allowed:
             cur.close()
-            redirect(url_for('home'))
+            return redirect(url_for('home'))
 
         cur.execute("""
             INSERT INTO announcements (course_id, author_id, title, content)
