@@ -536,6 +536,21 @@ def view_course(course_id):
     cur.execute("SELECT name FROM users WHERE id = %s", (user_id,))
     user_name = cur.fetchone()[0]
 
+    cur.execute("SELECT role FROM users WHERE id = %s", (user_id,))
+    role = cur.fetchone()[0]
+
+    if role == "student":
+        cur.execute("SELECT 1 FROM enrollments WHERE user_id = %s AND course_id = %s", (user_id, course_id))
+    elif role == "educator":
+        cur.execute("SELECT 1 FROM courses WHERE id = %s AND educator_id = %s", (course_id, user_id))
+    else:
+        allowed = None
+
+    allowed = cur.fetchone()
+    if not allowed:
+        cur.close()
+        return redirect(url_for('home'))
+
     cur.execute("SELECT name, description FROM courses WHERE id = %s", (course_id,))
     course = cur.fetchone()
 
@@ -550,20 +565,8 @@ def view_course(course_id):
     cur.execute("SELECT title, content, id, posted_at FROM announcements WHERE course_id = %s ORDER BY posted_at DESC", (course_id,))
     announcements = cur.fetchall()
 
-    cur.execute("SELECT role FROM users WHERE id = %s", (user_id,))
-    role = cur.fetchone()[0]
-
-    if role == "student":
-        cur.execute("SELECT 1 FROM enrollments WHERE user_id = %s AND course_id = %s", (user_id, course_id))
-    elif role == "educator":
-        cur.execute("SELECT 1 FROM courses WHERE id = %s AND educator_id = %s", (course_id, user_id))
-    else:
-        allowed = None
-
-    allowed = cur.fetchone()
-    if not allowed:
-        cur.close()
-        redirect(url_for('home'))
+    
+        
 
     cur.close()
     return render_template("course_details.html", course=course, materials=materials,
