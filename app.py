@@ -680,8 +680,8 @@ def course_forum(course_id):
     return render_template("forum.html", posts=posts, course_id=course_id, role=role,
                            user_name=user_name, current_user_id=user_id, posts_dict=posts_dict)
 
-@app.route("/forum/posts/<int:post_id>/edit", methods=["GET", "POST"])
-def edit_post(post_id):
+@app.route("/courses/<int:course_id>/forum/posts/<int:post_id>/edit", methods=["GET", "POST"])
+def edit_post(post_id,course_id):
     if 'user_id' not in session:
         return redirect(url_for('login')) 
     elif is_session_expired():
@@ -698,9 +698,26 @@ def edit_post(post_id):
 
     author_id, content, thread_id = result
 
-    if author_id != user_id and not is_educator(user_id):
+    cur.execute("""
+        SELECT course_id
+          FROM forum_threads
+         WHERE id = %s
+    """, (thread_id,))
+    tc = cur.fetchone()
+    if not tc or tc[0] != course_id:
         cur.close()
-        return redirect(url_for('home'))
+        abort(404, "That post isn’t in this course’s forum")
+
+    if author_id != user_id:
+        cur.execute("""
+            SELECT 1
+              FROM courses
+             WHERE id = %s
+               AND educator_id = %s
+        """, (course_id, user_id))
+        if not cur.fetchone():
+            cur.close()
+            return redirect(url_for('home'))
 
     if request.method == "POST":
         new_content = request.form["content"]
