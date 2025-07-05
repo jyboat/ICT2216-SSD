@@ -623,11 +623,11 @@ def course_forum(course_id):
         cur.execute("SELECT 1 FROM courses WHERE id = %s AND educator_id = %s", (course_id, user_id))
     else:
         cur.close()
-        redirect(url_for('home'))
+        return redirect(url_for('home'))
 
     if not cur.fetchone():
         cur.close()
-        redirect(url_for('home'))
+        return redirect(url_for('home'))
 
     if request.method == "POST":
         content = request.form["content"].strip()
