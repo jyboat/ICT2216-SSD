@@ -731,17 +731,27 @@ def delete_post(post_id):
     
     user_id = get_current_user_id()
     cur = mysql.connection.cursor()
-    cur.execute("SELECT author_id FROM forum_posts WHERE id = %s", (post_id,))
+    cur.execute("SELECT author_id, thread_id FROM forum_posts WHERE id = %s", (post_id,))
     result = cur.fetchone()
     if not result:
         cur.close()
         abort(404, description="Post not found")
 
-    author_id = result[0]
+    author_id, thread_id = result
+
     if user_id != author_id and not is_educator(user_id):
         cur.close()
         return redirect(url_for('home'))
 
+    cur.execute("SELECT course_id FROM forum_threads WHERE id = %s", (thread_id,))
+    course_result = cur.fetchone()
+
+
+    if not course_result:
+        cur.close()
+        abort(404, description="Course not found")
+
+    course_id = course_result[0]
     cur.execute("DELETE FROM forum_posts WHERE id = %s", (post_id,))
     mysql.connection.commit()
     cur.close()
