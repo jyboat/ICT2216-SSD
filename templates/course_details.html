@@ -21,7 +21,7 @@
         <a href="{{ url_for('announcement.post_announcement', course_id=course_id) }}" class="btn btn-outline-warning">
             <i class="fas fa-bullhorn"></i> Post Announcement
         </a>
-        <a href="{{ url_for('upload_material', course_id=course_id) }}" class="btn btn-outline-success">
+        <a href="{{ url_for('material.upload_material', course_id=course_id) }}" class="btn btn-outline-success">
             <i class="fas fa-upload"></i> Upload Material
         </a>
     {% endif %}
@@ -71,21 +71,24 @@
                     <small class="text-muted">Uploaded on {{ material[3].strftime('%b %d, %Y %I:%M %p') }}</small>
                 </div>
                 <div class="btn-group">
-                    <a href="{{ url_for('download_material', material_id=material[0]) }}"
-                        class="btn btn-sm btn-outline-secondary">
+                    <a href="{{ url_for('material.download_material', material_id=material[0]) }}"
+                       class="btn btn-sm btn-outline-secondary" title="Download">
                         <i class="fas fa-download"></i>
                     </a>
-                    <a href="{{ url_for('edit_material', material_id=material[0]) }}"
-                        class="btn btn-sm btn-outline-primary">
+
+                    {% if role == 'educator' %}
+                    <a href="{{ url_for('material.edit_material', material_id=material[0]) }}"
+                       class="btn btn-sm btn-outline-primary" title="Edit">
                         <i class="fas fa-edit"></i>
                     </a>
-                    <form method="POST" action="{{ url_for('delete_material', material_id=material[0]) }}"
-                        onsubmit="return confirm('Delete this material?')">
-                        <button type="submit" class="btn btn-sm btn-outline-danger">
+                    <form method="POST" action="{{ url_for('material.delete_material', material_id=material[0]) }}"
+                          onsubmit="return confirm('Delete this material?')" style="display:inline;">
+                        <button type="submit" class="btn btn-sm btn-outline-danger" title="Delete">
                             <i class="fas fa-trash"></i>
                         </button>
                         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                     </form>
+                    {% endif %}
                 </div>
             </div>
         </li>
