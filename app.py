@@ -1,7 +1,6 @@
 from dotenv import load_dotenv
-from flask import Flask, make_response, flash, abort, redirect, render_template, request, session, url_for
+from flask import Flask, flash, abort, redirect, render_template, request, session, url_for
 from flask_wtf import CSRFProtect
-from werkzeug.utils import secure_filename
 from collections import defaultdict
 import os
 from flask_mysqldb import MySQL
@@ -20,13 +19,14 @@ import io
 import base64
 import session_utils
 from log import log_to_database
-from session_utils import is_session_expired, is_logged_in, get_current_user_id, generate_fingerprint
+from session_utils import is_session_expired, is_logged_in, generate_fingerprint
 from error import register_error_handlers
 from email_utils import send_reset_email_via_sendgrid
 from forum import register_forum_routes
 from announcement import register_announcement_routes
 from course import register_course_routes
 from materials import register_material_routes
+from user import register_user_routes
 
 load_dotenv()  # Load environment variables from .env
 
@@ -133,7 +133,7 @@ def home():
     role = session['role']
 
     if role == "admin":
-        return redirect(url_for("manage_users"))
+        return redirect(url_for("user.manage_users"))
 
     cur = mysql.connection.cursor()
 
@@ -175,210 +175,6 @@ def home():
     cur.close()
     return render_template("home.html", user_name=user_name, role=role,
                            courses=courses, announcements=announcements)
-
-
-@app.route("/admin/users")
-def manage_users():
-    if 'user_id' not in session:
-        return redirect(url_for('login')) 
-    elif is_session_expired(mysql):
-        return redirect(url_for('login', error='session_expired')) 
-    
-    if session.get('role') != 'admin':
-        abort(403, description="Admin access required")
-    admin_id = get_current_user_id()
-    cur = mysql.connection.cursor()
-    cur.execute("SELECT name FROM users WHERE id = %s", (admin_id,))
-    user_name = cur.fetchone()[0]
-    cur.execute("""
-    SELECT
-      u.id,
-      u.name,
-      u.email,
-      u.role,
-      IFNULL(
-        GROUP_CONCAT(
-          DISTINCT ec.course_code
-          ORDER BY ec.course_code
-          SEPARATOR ', '
-        ),
-        ''
-      ) AS courses
-    FROM
-      users u
-    LEFT JOIN (
-      -- combine enrollments and teaching assignments into one set
-      SELECT
-        e.user_id,
-        c.course_code
-      FROM
-        enrollments e
-        JOIN courses c ON c.id = e.course_id
-
-      UNION
-
-      SELECT
-        c.educator_id AS user_id,
-        c.course_code
-      FROM
-        courses c
-    ) ec
-      ON ec.user_id = u.id
-    GROUP BY
-      u.id,
-      u.name,
-      u.email,
-      u.role
-    ORDER BY
-      u.name
-""")
-    users = cur.fetchall()
-
-    cur.close()
-    return render_template("user_management.html", users=users, user_name=user_name)
-
-
-@app.route("/admin/users/add", methods=["GET", "POST"])
-def add_user():
-    if 'user_id' not in session:
-        return redirect(url_for('login'))  
-    elif is_session_expired(mysql):
-        return redirect(url_for('login', error='session_expired')) 
-    
-    if session.get('role') != 'admin':
-        abort(403, description="Admin access required")
-    user_id = get_current_user_id()
-    cur = mysql.connection.cursor()
-    cur.execute("SELECT name FROM users WHERE id = %s", (user_id,))
-    user_name = cur.fetchone()[0]
-    cur.execute("SELECT course_code FROM courses ORDER BY course_code")
-    course_codes = [r[0] for r in cur.fetchall()]
-
-    if request.method == "POST":
-        name = request.form["name"]
-        email = request.form["email"]
-        password = request.form["password"]
-        role = request.form["role"]
-        selected_codes = request.form.getlist("course_codes")
-
-        hashed_pw = bcrypt.generate_password_hash(password).decode('utf-8')
-        cur.execute("""
-            INSERT INTO users (name, email, password_hash, role, totp_secret)
-            VALUES (%s, %s, %s, %s, %s)
-        """, (name, email, hashed_pw, role, ""))
-        mysql.connection.commit()
-        new_user_id = cur.lastrowid
-        for code in selected_codes:
-            cur.execute("""
-                INSERT INTO enrollments (user_id, course_id)
-                VALUES (
-                  %s,
-                  (SELECT id FROM courses WHERE course_code = %s)
-                )
-            """, (new_user_id, code))
-        mysql.connection.commit()
-
-        cur.close()
-
-        return redirect(url_for("manage_users"))
-
-    cur.close()
-    return render_template("user_form.html", action="Add", user_name=user_name, course_codes=course_codes, assigned_codes=[])
-
-
-@app.route("/admin/users/<int:user_id>/edit", methods=["GET", "POST"])
-def edit_user(user_id):
-    if 'user_id' not in session:
-        return redirect(url_for('login')) 
-    elif is_session_expired(mysql):
-        return redirect(url_for('login', error='session_expired')) 
-    
-    if session.get('role') != 'admin':
-        abort(403, description="Admin access required")
-    admin_id = get_current_user_id()
-    cur = mysql.connection.cursor()
-    cur.execute("SELECT name FROM users WHERE id = %s", (admin_id,))
-    user_name = cur.fetchone()[0]
-
-    cur.execute("SELECT course_code FROM courses ORDER BY course_code")
-    course_codes = [row[0] for row in cur.fetchall()]
-
-    if request.method == "POST":
-        name = request.form.get("name", "").strip()
-        email = request.form.get("email", "").strip().lower()
-        new_role = request.form.get("role", "")
-        selected_codes = request.form.getlist("course_codes")
-        cur.execute("SELECT role FROM users WHERE id = %s", (user_id,))
-        old_role = cur.fetchone()[0]
-        # validation
-        if not name or len(name) > 100:
-            abort(400, "Name is required (max 100 chars)")
-        if not re.match(r"[^@]+@[^@]+\.[^@]+", email):
-            abort(400, "Invalid email address")
-        if new_role not in ("student", "educator", "admin"):
-            abort(400, "Invalid role")
-
-        cur.execute("""
-            UPDATE users
-            SET name = %s, email = %s, role = %s
-            WHERE id = %s
-        """, (name, email, new_role, user_id))
-
-        if old_role == 'educator' and new_role != 'educator':
-            cur.execute("DELETE FROM courses WHERE educator_id = %s", (user_id,))
-        
-        cur.execute(
-            "DELETE FROM enrollments WHERE user_id = %s",
-            (user_id,)
-        )
-
-        for code in selected_codes:
-            cur.execute("""
-                INSERT INTO enrollments (user_id, course_id)
-                VALUES (
-                  %s,
-                  (SELECT id FROM courses WHERE course_code = %s)
-                )
-            """, (user_id, code))
-
-        mysql.connection.commit()
-        cur.close()
-
-        return redirect(url_for("manage_users"))
-
-    cur.execute("SELECT name, email, role FROM users WHERE id = %s", (user_id,))
-    user = cur.fetchone()
-
-    cur.execute("""
-      SELECT c.course_code
-        FROM courses c
-        JOIN enrollments e ON e.course_id = c.id
-       WHERE e.user_id = %s
-    """, (user_id,))
-    assigned_codes = [row[0] for row in cur.fetchall()]
-    cur.close()
-
-    return render_template("user_form.html", action="Edit", user=user, user_id=user_id, user_name=user_name, course_codes=course_codes, assigned_codes=assigned_codes)
-
-
-@app.route("/admin/users/<int:user_id>/delete", methods=["POST"])
-def delete_user(user_id):
-    if 'user_id' not in session:
-        return redirect(url_for('login')) 
-    elif is_session_expired(mysql):
-        return redirect(url_for('login', error='session_expired'))
-
-    if session.get('role') != 'admin':
-        abort(403, description="Admin access required")
-    cur = mysql.connection.cursor()
-    cur.execute("SELECT 1 FROM users WHERE id = %s", (user_id,))
-    if not cur.fetchone():
-        cur.close()
-        abort(404, "User not found")
-    cur.execute("DELETE FROM users WHERE id = %s", (user_id,))
-    mysql.connection.commit()
-    cur.close()
-    return redirect(url_for("manage_users"))
 
 
 @app.route('/login', methods=['GET', 'POST'])
@@ -745,6 +541,7 @@ register_forum_routes(app, mysql)
 register_announcement_routes(app, mysql)
 register_course_routes(app, mysql)
 register_material_routes(app, mysql)
+register_user_routes(app, mysql, bcrypt)
 
 
 if __name__ == "__main__":
