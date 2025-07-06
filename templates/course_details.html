@@ -18,7 +18,7 @@
     {% endif %}
 
     {% if role == 'educator' %}
-        <a href="{{ url_for('post_announcement', course_id=course_id) }}" class="btn btn-outline-warning">
+        <a href="{{ url_for('announcement.post_announcement', course_id=course_id) }}" class="btn btn-outline-warning">
             <i class="fas fa-bullhorn"></i> Post Announcement
         </a>
         <a href="{{ url_for('upload_material', course_id=course_id) }}" class="btn btn-outline-success">
@@ -39,14 +39,14 @@
                 </div>
                 {% if role == 'educator' %}
                 <div class="btn-group ms-3 gap-2" role="group" aria-label="Announcement actions">
-                    <form action="{{ url_for('delete_announcement', course_id=course_id, announcement_id=a[2]) }}"
+                    <form action="{{ url_for('announcement.delete_announcement', course_id=course_id, announcement_id=a[2]) }}"
                         method="POST" onsubmit="return confirm('Delete this announcement?');" style="margin: 0;">
                         <button type="submit" class="btn btn-sm btn-outline-danger" aria-label="Delete">
                             <i class="fas fa-trash"></i>
                         </button>
                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                     </form>
-                    <a href="{{ url_for('edit_announcement', course_id=course_id, announcement_id=a[2]) }}"
+                    <a href="{{ url_for('announcement.edit_announcement', course_id=course_id, announcement_id=a[2]) }}"
                     class="btn btn-sm btn-outline-secondary" aria-label="Edit">
                         <i class="fas fa-edit"></i>
                     </a>
