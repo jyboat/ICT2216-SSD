@@ -23,10 +23,10 @@ import pyotp
 import qrcode
 import io
 import base64
-
 import session_utils
 from log import log_to_database
 from session_utils import is_session_expired, is_logged_in, is_educator, get_current_user_id, generate_fingerprint
+from error import register_error_handlers
 
 load_dotenv()  # Load environment variables from .env
 
@@ -1494,45 +1494,13 @@ def reset_password(token):
     return render_template("reset_password.html", form=form)
 
 
-@app.errorhandler(403)
-def forbidden(e):
-    user_id = session.get('user_id', 'Unauthenticated')
-    ip = request.remote_addr
-    path = request.path
-    msg = "403 Forbidden"
-    session_utils.suspicious_logger.warning(f"{msg} - user_id: {user_id}, IP: {ip}, path: {path}")
-    log_to_database(mysql, "WARNING", 403, user_id, ip, path, msg)
-    return render_template("error.html", error=e), 403
-
-
-@app.errorhandler(404)
-def not_found(e):
-    user_id = session.get('user_id', 'Unauthenticated')
-    ip = request.remote_addr
-    path = request.path
-    msg = "404 Not Found"
-    session_utils.suspicious_logger.warning(f"{msg} - user_id: {user_id}, IP: {ip}, path: {path}")
-    log_to_database(mysql, "WARNING", 404, user_id, ip, path, msg)
-    return render_template("error.html", error=e), 404
-
-
-@app.errorhandler(400)
-def bad_request(e):
-    user_id = session.get('user_id', 'Unauthenticated')
-    ip = request.remote_addr
-    path = request.path
-    msg = "400 Bad Request"
-    session_utils.suspicious_logger.warning(f"{msg} - user_id: {user_id}, IP: {ip}, path: {path}")
-    log_to_database(mysql, "WARNING", 400, user_id, ip, path, msg)
-    return render_template("error.html", error=e), 400
-
-
 app.config['MYSQL_HOST'] = os.getenv('MYSQL_HOST')
 app.config['MYSQL_USER'] = os.getenv('MYSQL_USER')
 app.config['MYSQL_PASSWORD'] = os.getenv('MYSQL_PASSWORD')
 app.config['MYSQL_DB'] = os.getenv('MYSQL_DB')
 
 mysql = MySQL(app)
+register_error_handlers(app, mysql)
 
 
 if __name__ == "__main__":
