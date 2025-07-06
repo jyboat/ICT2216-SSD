@@ -7,16 +7,15 @@ from flask_bcrypt import Bcrypt
 from datetime import timedelta
 from itsdangerous import URLSafeTimedSerializer
 from werkzeug.middleware.proxy_fix import ProxyFix
-import session_utils
-from log import log_to_database
-from session_utils import is_session_expired, generate_fingerprint
-from error import register_error_handlers
-from forum import register_forum_routes
-from announcement import register_announcement_routes
-from course import register_course_routes
-from materials import register_material_routes
-from user import register_user_routes
-from auth import register_auth_routes
+from modules.log import log_to_database
+from modules.session_utils import is_session_expired, generate_fingerprint, suspicious_logger
+from modules.error import register_error_handlers
+from modules.forum import register_forum_routes
+from modules.announcement import register_announcement_routes
+from modules.course import register_course_routes
+from modules.materials import register_material_routes
+from modules.user import register_user_routes
+from modules.auth import register_auth_routes
 
 load_dotenv()  # Load environment variables from .env
 
@@ -62,7 +61,7 @@ def security_check():
         
         if current_fingerprint != stored_fingerprint:
             # Log potential session hijacking attempt
-            session_utils.suspicious_logger.warning(
+            suspicious_logger.warning(
                 f"Session hijacking detected! User-ID: {session['user_id']}, "
                 f"IP: {request.headers.get('X-Real-IP', request.remote_addr)}, "
                 f"UA: {request.headers.get('User-Agent', '')[:50]}"

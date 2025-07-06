@@ -1,5 +1,5 @@
 from flask import Blueprint, render_template, redirect, url_for, session, request, abort, flash
-from session_utils import is_session_expired, get_current_user_id
+from modules.session_utils import is_session_expired, get_current_user_id
 import bleach
 
 course_bp = Blueprint("course", __name__)

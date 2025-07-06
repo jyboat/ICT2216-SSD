@@ -1,6 +1,6 @@
 from flask import Blueprint, request, render_template, redirect, url_for, session, abort
 import re
-from session_utils import is_session_expired, get_current_user_id
+from modules.session_utils import is_session_expired, get_current_user_id
 
 user_bp = Blueprint("user", __name__)
 

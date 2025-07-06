@@ -1,6 +1,6 @@
 from flask import Blueprint, request, session, redirect, url_for, render_template, abort
 import bleach
-from session_utils import is_session_expired, get_current_user_id
+from modules.session_utils import is_session_expired, get_current_user_id
 
 announcement_bp = Blueprint("announcement", __name__)
 

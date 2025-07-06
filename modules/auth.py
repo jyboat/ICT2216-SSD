@@ -10,9 +10,9 @@ import io
 import os
 import qrcode
 from itsdangerous import SignatureExpired, BadSignature
-from session_utils import is_logged_in, generate_fingerprint, suspicious_logger
-from email_utils import send_reset_email_via_sendgrid
-from log import log_to_database
+from modules.session_utils import is_logged_in, generate_fingerprint, suspicious_logger
+from modules.email_utils import send_reset_email_via_sendgrid
+from modules.log import log_to_database
 from collections import defaultdict
 
 auth_bp = Blueprint("auth", __name__)

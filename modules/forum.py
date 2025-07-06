@@ -2,7 +2,7 @@ from flask import Blueprint, render_template, request, redirect, url_for, abort,
 import bleach
 from urllib.parse import urlparse
 
-from session_utils import is_session_expired, get_current_user_id, is_educator
+from modules.session_utils import is_session_expired, get_current_user_id, is_educator
 
 forum_bp = Blueprint('forum', __name__)
 

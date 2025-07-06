@@ -1,6 +1,6 @@
 from flask import render_template, request, session
-from log import log_to_database
-import session_utils
+from modules.log import log_to_database
+from modules.session_utils import suspicious_logger
 
 
 def register_error_handlers(app, mysql):
@@ -10,7 +10,7 @@ def register_error_handlers(app, mysql):
         ip = request.remote_addr
         path = request.path
         msg = "403 Forbidden"
-        session_utils.suspicious_logger.warning(f"{msg} - user_id: {user_id}, IP: {ip}, path: {path}")
+        suspicious_logger.warning(f"{msg} - user_id: {user_id}, IP: {ip}, path: {path}")
         log_to_database(mysql, "WARNING", 403, user_id, ip, path, msg)
         return render_template("error.html", error=e), 403
 
@@ -20,7 +20,7 @@ def register_error_handlers(app, mysql):
         ip = request.remote_addr
         path = request.path
         msg = "404 Not Found"
-        session_utils.suspicious_logger.warning(f"{msg} - user_id: {user_id}, IP: {ip}, path: {path}")
+        suspicious_logger.warning(f"{msg} - user_id: {user_id}, IP: {ip}, path: {path}")
         log_to_database(mysql, "WARNING", 404, user_id, ip, path, msg)
         return render_template("error.html", error=e), 404
 
@@ -30,6 +30,6 @@ def register_error_handlers(app, mysql):
         ip = request.remote_addr
         path = request.path
         msg = "400 Bad Request"
-        session_utils.suspicious_logger.warning(f"{msg} - user_id: {user_id}, IP: {ip}, path: {path}")
+        suspicious_logger.warning(f"{msg} - user_id: {user_id}, IP: {ip}, path: {path}")
         log_to_database(mysql, "WARNING", 400, user_id, ip, path, msg)
         return render_template("error.html", error=e), 400
