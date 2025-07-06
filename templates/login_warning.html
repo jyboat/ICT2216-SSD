@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Login Warning</title>
+    <style>
+        .warning-container {
+            max-width: 400px;
+            margin: 100px auto;
+            padding: 20px;
+            text-align: center;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .warning-icon {
+            color: #f0ad4e;
+            font-size: 48px;
+            margin-bottom: 20px;
+        }
+        .btn {
+            padding: 10px 20px;
+            margin: 10px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .btn-primary {
+            background-color: #007bff;
+            color: white;
+        }
+        .btn-secondary {
+            background-color: #6c757d;
+            color: white;
+        }
+    </style>
+</head>
+<body>
+    <div class="warning-container">
+        <div class="warning-icon">⚠️</div>
+        <h2>Active Session Detected</h2>
+        <p>You are already logged in on another device. Would you like to continue and end that session?</p>
+        <form method="POST" action="{{ url_for('handle_login_warning') }}">
+            <input type="hidden" name="email" value="{{ email }}">
+            <input type="hidden" name="password" value="{{ password }}">
+            <input type="hidden" name="remember_me" value="{{ remember_me }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button type="submit" name="action" value="continue" class="btn btn-primary">Yes, Continue</button>
+            <button type="submit" name="action" value="cancel" class="btn btn-secondary">No, Cancel</button>
+        </form>
+    </div>
+</body>
+</html>

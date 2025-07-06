@@ -36,14 +36,12 @@ cf_secret_key = os.getenv("CF_SECRET_KEY")
 # session timeout
 app.permanent_session_lifetime = timedelta(minutes=15)
 
-
 app.config['SESSION_TYPE'] = 'redis' 
 app.config['SESSION_PERMANENT'] = False
 app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(hours=1) 
 app.config['SESSION_COOKIE_SECURE'] = True  # Only send cookies over HTTPS
 app.config['SESSION_COOKIE_HTTPONLY'] = True  # Prevent JavaScript access
 app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'  # Controls cross-site requests
-
 
 @app.before_request
 def security_check():
@@ -153,6 +151,43 @@ def home():
     return render_template("home.html", user_name=user_name, role=role,
                            courses=courses, announcements=announcements)
 
+# login warning handler
+@app.route('/handle-login-warning', methods=['POST'])
+def handle_login_warning():
+    action = request.form.get('action')
+    email = request.form.get('email')
+    password = request.form.get('password')
+    remember_me = request.form.get('remember_me')
+
+    if action == 'continue':
+        # Proceed with login and invalidate other session
+        cur = mysql.connection.cursor()
+        cur.execute("SELECT * FROM users WHERE email = %s", (email,))
+        user = cur.fetchone()
+        
+        if user and bcrypt.check_password_hash(user[3], password):
+            # Set temporary session data for 2FA verification
+            session['temp_user_id'] = user[0]
+            
+            if remember_me == 'on':
+                session.permanent = True
+            else:
+                session.permanent = False
+
+            # Nullify the existing session token
+            cur.execute("UPDATE users SET session_token = NULL WHERE id = %s", (user[0],))
+            mysql.connection.commit()
+            cur.close()
+
+            # Check if user needs to set up 2FA
+            #if not user[6]:  # Assuming index 6 is totp_secret
+                #session['temp_new_user_email'] = email
+                #return redirect(url_for('setup_2fa'))
+            #else:
+            return redirect(url_for('verify_2fa'))
+    
+    # If action is 'cancel' or any other value, just redirect to home
+    return redirect(url_for('login'))
 
 app.config['MYSQL_HOST'] = os.getenv('MYSQL_HOST')
 app.config['MYSQL_USER'] = os.getenv('MYSQL_USER')
