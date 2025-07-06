@@ -1146,7 +1146,7 @@ def login():
                     return render_template("login_warning.html",
                                            email=email,
                                            password=password,
-                                           remember_me=request.form.get('remember_me')),
+                                           remember_me=request.form.get('remember_me'))
                 session['temp_user_id'] = user[0]
                 if request.form.get('remember_me') == 'on':
                     session.permanent = True
