@@ -43,6 +43,7 @@
             <input type="hidden" name="email" value="{{ email }}">
             <input type="hidden" name="password" value="{{ password }}">
             <input type="hidden" name="remember_me" value="{{ remember_me }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <button type="submit" name="action" value="continue" class="btn btn-primary">Yes, Continue</button>
             <button type="submit" name="action" value="cancel" class="btn btn-secondary">No, Cancel</button>
         </form>
