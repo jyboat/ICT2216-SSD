@@ -136,6 +136,8 @@ def is_logged_in():
     if is_valid_session():
         if time.time() - session.get('last_active', 0) < 900:
             session['last_active'] = time.time()
+            # warn user they are already logged in on another device
+            flash('You are already logged in on another device.', 'warning')
             return True
     return False
 
@@ -1033,6 +1035,7 @@ def delete_user(user_id):
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
+    # Check if user is already logged in
     if is_logged_in():
         return redirect(url_for('home'))
     
