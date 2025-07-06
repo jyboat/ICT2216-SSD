@@ -26,6 +26,7 @@ from error import register_error_handlers
 from email_utils import send_reset_email_via_sendgrid
 from forum import register_forum_routes
 from announcement import register_announcement_routes
+from course import register_course_routes
 
 load_dotenv()  # Load environment variables from .env
 
@@ -1162,6 +1163,7 @@ mysql = MySQL(app)
 register_error_handlers(app, mysql)
 register_forum_routes(app, mysql)
 register_announcement_routes(app, mysql)
+register_course_routes(app, mysql)
 
 
 if __name__ == "__main__":
