@@ -1048,22 +1048,25 @@ def handle_login_warning():
         user = cur.fetchone()
         
         if user and bcrypt.check_password_hash(user[3], password):
-            new_token = os.urandom(32).hex()
-            cur.execute("UPDATE users SET session_token = %s WHERE id = %s", (new_token, user[0]))
-            mysql.connection.commit()
-            
-            session['user_id'] = user[0]
-            session['user_name'] = user[1]
-            session['role'] = user[4]
-            session['last_active'] = time.time()
-            session['session_token'] = new_token
-            session['fingerprint'] = generate_fingerprint(request)
+            # Set temporary session data for 2FA verification
+            session['temp_user_id'] = user[0]
             
             if remember_me == 'on':
                 session.permanent = True
-            
+            else:
+                session.permanent = False
+
+            # Nullify the existing session token
+            cur.execute("UPDATE users SET session_token = NULL WHERE id = %s", (user[0],))
+            mysql.connection.commit()
             cur.close()
-            return redirect(url_for('verify_2fa'))
+
+            # Check if user needs to set up 2FA
+            if not user[6]:  # Assuming index 6 is totp_secret
+                session['temp_new_user_email'] = email
+                return redirect(url_for('setup_2fa'))
+            else:
+                return redirect(url_for('verify_2fa'))
     
     # If action is 'cancel' or any other value, just redirect to home
     return redirect(url_for('login'))
