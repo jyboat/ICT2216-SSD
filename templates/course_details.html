@@ -12,7 +12,7 @@
 
     <div class="d-flex gap-3 mb-4">
     {% if role in ['student', 'educator'] %}
-        <a href="{{ url_for('course_forum', course_id=course_id) }}" class="btn btn-outline-primary">
+        <a href="{{ url_for('forum.course_forum', course_id=course_id) }}" class="btn btn-outline-primary">
             <i class="fas fa-comments"></i> Forum
         </a>
     {% endif %}
