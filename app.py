@@ -1063,7 +1063,7 @@ def handle_login_warning():
                 session.permanent = True
             
             cur.close()
-            return redirect(url_for('home'))
+            return redirect(url_for('verify_2fa'))
     
     # If action is 'cancel' or any other value, just redirect to home
     return redirect(url_for('login'))
