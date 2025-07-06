@@ -1062,11 +1062,11 @@ def handle_login_warning():
             cur.close()
 
             # Check if user needs to set up 2FA
-            if not user[6]:  # Assuming index 6 is totp_secret
-                session['temp_new_user_email'] = email
-                return redirect(url_for('setup_2fa'))
-            else:
-                return redirect(url_for('verify_2fa'))
+            #if not user[6]:  # Assuming index 6 is totp_secret
+                #session['temp_new_user_email'] = email
+                #return redirect(url_for('setup_2fa'))
+            #else:
+            return redirect(url_for('verify_2fa'))
     
     # If action is 'cancel' or any other value, just redirect to home
     return redirect(url_for('login'))
