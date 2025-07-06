@@ -62,7 +62,7 @@ class ResetPasswordForm(FlaskForm):
 def register_auth_routes(app, mysql, bcrypt, serializer):
     global login_attempts
 
-    @app.route('/login', methods=['GET', 'POST'])
+    @auth_bp.route('/login', methods=['GET', 'POST'])
     def login():
         if is_logged_in(mysql):
             return redirect(url_for('home'))
@@ -143,9 +143,9 @@ def register_auth_routes(app, mysql, bcrypt, serializer):
                     login_attempts[ip] = []
                     if not user[6]:
                         session['temp_new_user_email'] = email
-                        return redirect(url_for('setup_2fa'))
+                        return redirect(url_for('auth.setup_2fa'))
                     else:
-                        return redirect(url_for('verify_2fa'))
+                        return redirect(url_for('auth.verify_2fa'))
                 else:
                     suspicious_logger.warning(
                         f"Failed login (wrong password) - email: {email}, IP: {request.remote_addr}")
@@ -162,7 +162,7 @@ def register_auth_routes(app, mysql, bcrypt, serializer):
         else:
             return render_template("login.html", hide_header=True, error=error_message)
 
-    @app.route("/logout")
+    @auth_bp.route("/logout")
     def logout():
         user_id = session.get('user_id')
         if user_id:
@@ -173,7 +173,7 @@ def register_auth_routes(app, mysql, bcrypt, serializer):
         session.clear()
         return redirect(url_for('index'))
 
-    @app.route('/register', methods=['GET', 'POST'])
+    @auth_bp.route('/register', methods=['GET', 'POST'])
     def register():
         if is_logged_in(mysql):
             return redirect(url_for('home'))
@@ -216,14 +216,14 @@ def register_auth_routes(app, mysql, bcrypt, serializer):
             cur.close()
 
             session['temp_new_user_email'] = email
-            return redirect(url_for('setup_2fa'))
+            return redirect(url_for('auth.setup_2fa'))
 
         return render_template("register.html", hide_header=True)
 
-    @app.route('/verify-2fa', methods=['GET', 'POST'])
+    @auth_bp.route('/verify-2fa', methods=['GET', 'POST'])
     def verify_2fa():
         if 'temp_user_id' not in session:
-            return redirect(url_for('login'))
+            return redirect(url_for('auth.login'))
 
         if request.method == 'POST':
             otp = request.form['otp']
@@ -258,11 +258,11 @@ def register_auth_routes(app, mysql, bcrypt, serializer):
 
         return render_template("verify_2fa.html")
 
-    @app.route('/setup-2fa', methods=['GET', 'POST'])
+    @auth_bp.route('/setup-2fa', methods=['GET', 'POST'])
     def setup_2fa():
         email = session.get('temp_new_user_email')
         if not email:
-            return redirect(url_for('login'))
+            return redirect(url_for('auth.login'))
 
         cur = mysql.connection.cursor()
         cur.execute("SELECT id, name, role, totp_secret FROM users WHERE email = %s", (email,))
@@ -331,7 +331,45 @@ def register_auth_routes(app, mysql, bcrypt, serializer):
 
         return render_template("setup_2fa.html", qr_code_b64=generate_qr(session['pending_totp_secret'], email))
 
-    @app.route("/forget-password", methods=["GET", "POST"])
+    # login warning handler
+    @auth_bp.route('/handle-login-warning', methods=['POST'])
+    def handle_login_warning():
+        action = request.form.get('action')
+        email = request.form.get('email')
+        password = request.form.get('password')
+        remember_me = request.form.get('remember_me')
+
+        if action == 'continue':
+            # Proceed with login and invalidate other session
+            cur = mysql.connection.cursor()
+            cur.execute("SELECT * FROM users WHERE email = %s", (email,))
+            user = cur.fetchone()
+
+            if user and bcrypt.check_password_hash(user[3], password):
+                # Set temporary session data for 2FA verification
+                session['temp_user_id'] = user[0]
+
+                if remember_me == 'on':
+                    session.permanent = True
+                else:
+                    session.permanent = False
+
+                # Nullify the existing session token
+                cur.execute("UPDATE users SET session_token = NULL WHERE id = %s", (user[0],))
+                mysql.connection.commit()
+                cur.close()
+
+                # Check if user needs to set up 2FA
+                # if not user[6]:  # Assuming index 6 is totp_secret
+                # session['temp_new_user_email'] = email
+                # return redirect(url_for('setup_2fa'))
+                # else:
+                return redirect(url_for('auth.verify_2fa'))
+
+        # If action is 'cancel' or any other value, just redirect to home
+        return redirect(url_for('auth.login'))
+
+    @auth_bp.route("/forget-password", methods=["GET", "POST"])
     def forget_password():
         form = ForgetPasswordForm()
         if form.validate_on_submit():
@@ -356,7 +394,7 @@ def register_auth_routes(app, mysql, bcrypt, serializer):
 
         return render_template("forget_password.html", form=form)
 
-    @app.route("/reset/<token>", methods=["GET", "POST"])
+    @auth_bp.route("/reset/<token>", methods=["GET", "POST"])
     def reset_password(token):
         try:
             email = serializer.loads(
@@ -369,7 +407,7 @@ def register_auth_routes(app, mysql, bcrypt, serializer):
             return redirect(url_for("forget_password"))
         except BadSignature:
             flash("Invalid reset link.", "danger")
-            return redirect(url_for("forget_password"))
+            return redirect(url_for("auth.forget_password"))
 
         form = ResetPasswordForm()
         if form.validate_on_submit():
@@ -388,7 +426,7 @@ def register_auth_routes(app, mysql, bcrypt, serializer):
             session.clear()
 
             flash("Your password has been reset. Please login with your new password", "success")
-            return redirect(url_for("login"))
+            return redirect(url_for("auth.login"))
 
         return render_template("reset_password.html", form=form)
 

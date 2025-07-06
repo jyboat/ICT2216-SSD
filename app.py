@@ -43,16 +43,17 @@ app.config['SESSION_COOKIE_SECURE'] = True  # Only send cookies over HTTPS
 app.config['SESSION_COOKIE_HTTPONLY'] = True  # Prevent JavaScript access
 app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'  # Controls cross-site requests
 
+
 @app.before_request
 def security_check():
     """Check for session hijacking on every request"""
     # Skip for non-authenticated routes
-    if request.endpoint in ['login', 'register', 'static', 'verify_2fa', 'setup_2fa', 'index', 'logout', 'forget_password', 'reset_password']:
+    if request.endpoint in ['auth.login', 'auth.register', 'static', 'auth.verify_2fa', 'auth.setup_2fa', 'index', 'auth.logout', 'auth.forget_password', 'auth.reset_password']:
         return
     
     # Check if user is logged in
     if 'user_id' not in session or 'session_token' not in session:
-        return redirect(url_for('login'))
+        return redirect(url_for('auth.login'))
     
     # Check fingerprint if present
     if 'fingerprint' in session:
@@ -80,11 +81,11 @@ def security_check():
             
             # Invalidate session
             session.clear()
-            return redirect(url_for('login', error='security_violation'))
+            return redirect(url_for('auth.login', error='security_violation'))
     
     # Also check for session expiration
     if is_session_expired(mysql):
-        return redirect(url_for('login', error='session_expired'))
+        return redirect(url_for('auth.login', error='session_expired'))
 
 
 @app.route("/")
@@ -99,9 +100,9 @@ def index():
 @app.route("/home")
 def home():
     if 'user_id' not in session:
-        return redirect(url_for('login')) 
+        return redirect(url_for('auth.login'))
     elif is_session_expired(mysql):
-        return redirect(url_for('login', error='session_expired'))
+        return redirect(url_for('auth.login', error='session_expired'))
 
     user_id = session['user_id']
     user_name = session['user_name']
@@ -151,43 +152,6 @@ def home():
     return render_template("home.html", user_name=user_name, role=role,
                            courses=courses, announcements=announcements)
 
-# login warning handler
-@app.route('/handle-login-warning', methods=['POST'])
-def handle_login_warning():
-    action = request.form.get('action')
-    email = request.form.get('email')
-    password = request.form.get('password')
-    remember_me = request.form.get('remember_me')
-
-    if action == 'continue':
-        # Proceed with login and invalidate other session
-        cur = mysql.connection.cursor()
-        cur.execute("SELECT * FROM users WHERE email = %s", (email,))
-        user = cur.fetchone()
-        
-        if user and bcrypt.check_password_hash(user[3], password):
-            # Set temporary session data for 2FA verification
-            session['temp_user_id'] = user[0]
-            
-            if remember_me == 'on':
-                session.permanent = True
-            else:
-                session.permanent = False
-
-            # Nullify the existing session token
-            cur.execute("UPDATE users SET session_token = NULL WHERE id = %s", (user[0],))
-            mysql.connection.commit()
-            cur.close()
-
-            # Check if user needs to set up 2FA
-            #if not user[6]:  # Assuming index 6 is totp_secret
-                #session['temp_new_user_email'] = email
-                #return redirect(url_for('setup_2fa'))
-            #else:
-            return redirect(url_for('verify_2fa'))
-    
-    # If action is 'cancel' or any other value, just redirect to home
-    return redirect(url_for('login'))
 
 app.config['MYSQL_HOST'] = os.getenv('MYSQL_HOST')
 app.config['MYSQL_USER'] = os.getenv('MYSQL_USER')

@@ -39,7 +39,7 @@
         <div class="warning-icon">⚠️</div>
         <h2>Active Session Detected</h2>
         <p>You are already logged in on another device. Would you like to continue and end that session?</p>
-        <form method="POST" action="{{ url_for('handle_login_warning') }}">
+        <form method="POST" action="{{ url_for('auth.handle_login_warning') }}">
             <input type="hidden" name="email" value="{{ email }}">
             <input type="hidden" name="password" value="{{ password }}">
             <input type="hidden" name="remember_me" value="{{ remember_me }}">

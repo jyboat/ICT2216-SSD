@@ -22,7 +22,7 @@
         </div>
         {% endif %}
 
-        <form method="POST" action="{{ url_for('login') }}">
+        <form method="POST" action="{{ url_for('auth.login') }}">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <div data-mdb-input-init class="form-outline mb-4">
                 <input type="email" name="email" id="form2Example1" class="form-control" required/>

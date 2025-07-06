@@ -52,7 +52,7 @@
         <p>Open your authenticator app and scan this code to enable 2FA.</p>
         <img src="data:image/png;base64,{{ qr_code_b64 }}" class="qr" alt="QR Code">
 
-        <form method="POST" action="{{ url_for('verify_2fa') }}">
+        <form method="POST" action="{{ url_for('auth.verify_2fa') }}">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <p>Then enter the 6-digit code from your app:</p>
             <input type="text" name="otp" maxlength="6" required>
