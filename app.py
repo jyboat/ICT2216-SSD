@@ -137,7 +137,7 @@ def is_logged_in():
         if time.time() - session.get('last_active', 0) < 900:
             session['last_active'] = time.time()
             # warn user they are already logged in on another device
-            flash('You are already logged in on another device.', 'warning')
+            #flash('You are already logged in on another device.', 'warning')
             return True
     return False
 
@@ -1033,11 +1033,46 @@ def delete_user(user_id):
     cur.close()
     return redirect(url_for("manage_users"))
 
+# login warning handler
+@app.route('/handle-login-warning', methods=['POST'])
+def handle_login_warning():
+    action = request.form.get('action')
+    email = request.form.get('email')
+    password = request.form.get('password')
+    remember_me = request.form.get('remember_me')
+
+    if action == 'continue':
+        # Proceed with login and invalidate other session
+        cur = mysql.connection.cursor()
+        cur.execute("SELECT * FROM users WHERE email = %s", (email,))
+        user = cur.fetchone()
+        
+        if user and bcrypt.check_password_hash(user[3], password):
+            new_token = os.urandom(32).hex()
+            cur.execute("UPDATE users SET session_token = %s WHERE id = %s", (new_token, user[0]))
+            mysql.connection.commit()
+            
+            session['user_id'] = user[0]
+            session['user_name'] = user[1]
+            session['role'] = user[4]
+            session['last_active'] = time.time()
+            session['session_token'] = new_token
+            session['fingerprint'] = generate_fingerprint(request)
+            
+            if remember_me == 'on':
+                session.permanent = True
+            
+            cur.close()
+            return redirect(url_for('home'))
+    
+    # If action is 'cancel' or any other value, just redirect to home
+    return redirect(url_for('login'))
+
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     # Check if user is already logged in
-    if is_logged_in():
-        return redirect(url_for('home'))
+    #if is_logged_in():
+     #   return redirect(url_for('home'))
     
     error_param = request.args.get('error')
     error_message = None
@@ -1103,8 +1138,16 @@ def login():
         if user:
             stored_hash = user[3]
             if bcrypt.check_password_hash(stored_hash, password):
-                session['temp_user_id'] = user[0]
+                cur.execute("SELECT session_token FROM users WHERE id = %s", (user[0],))
+                existing_session = cur.fetchone()[0]
 
+                if existing_session:
+                    cur.close()
+                    return render_template("login_warning.html",
+                                           email=email,
+                                           password=password,
+                                           remember_me=request.form.get('remember_me')),
+                session['temp_user_id'] = user[0]
                 if request.form.get('remember_me') == 'on':
                     session.permanent = True
                 else:
