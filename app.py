@@ -26,6 +26,7 @@ import io
 import base64
 import requests
 import hashlib
+from log import log_to_database
 
 load_dotenv()  # Load environment variables from .env
 
@@ -185,6 +186,7 @@ def security_check():
             
             # Log to database
             log_to_database(
+                mysql,
                 "WARNING", 
                 403, 
                 session['user_id'], 
@@ -1086,7 +1088,7 @@ def login():
         # Block if too many attempts
         if len(login_attempts[ip]) >= BLOCK_THRESHOLD:
             suspicious_logger.warning(f"Blocked login - too many attempts - IP: {ip}")
-            log_to_database("WARNING", 429, 'Unauthenticated', ip, "/login", "Blocked login - too many attempts")
+            log_to_database(mysql,"WARNING", 429, 'Unauthenticated', ip, "/login", "Blocked login - too many attempts")
             return render_template("login.html", error="Too many failed attempts. Try again later.", hide_header=True)
 
         # Otherwise, Continue with login attempt
@@ -1115,11 +1117,11 @@ def login():
                     return redirect(url_for('verify_2fa'))
             else:
                 suspicious_logger.warning(f"Failed login (wrong password) - email: {email}, IP: {request.remote_addr}")
-                log_to_database("WARNING", 401, 'Unauthenticated', request.remote_addr, "/login",
+                log_to_database(mysql,"WARNING", 401, 'Unauthenticated', request.remote_addr, "/login",
                                 f"Failed login (wrong password) - email: {email}")
         else:
             suspicious_logger.warning(f"Failed login (no such user) - email: {email}, IP: {request.remote_addr}")
-            log_to_database("WARNING", 401, 'Unauthenticated', request.remote_addr, "/login",
+            log_to_database(mysql,"WARNING", 401, 'Unauthenticated', request.remote_addr, "/login",
                             f"Failed login (no such user) - email: {email}")
 
     if request.method == 'POST':
@@ -1224,7 +1226,7 @@ def setup_2fa():
     cur.close()
 
     if not result:
-        log_to_database("ERROR", 404, 'Unauthenticated', request.remote_addr, "/setup-2fa", f"User not found for email: {email}")
+        log_to_database(mysql,"ERROR", 404, 'Unauthenticated', request.remote_addr, "/setup-2fa", f"User not found for email: {email}")
         abort(404)
 
     user_id, user_name, role, totp_secret = result
@@ -1266,15 +1268,15 @@ def setup_2fa():
                 session.pop('temp_new_user_email', None)
                 session.pop('pending_totp_secret', None)
 
-                log_to_database("INFO", 200, user_id, request.remote_addr, "/setup-2fa", "2FA setup completed successfully")
+                log_to_database(mysql,"INFO", 200, user_id, request.remote_addr, "/setup-2fa", "2FA setup completed successfully")
                 return redirect(url_for('home'))
 
             except Exception as e:
-                log_to_database("ERROR", 500, user_id, request.remote_addr, "/setup-2fa", f"Failed to save TOTP: {str(e)}")
+                log_to_database(mysql,"ERROR", 500, user_id, request.remote_addr, "/setup-2fa", f"Failed to save TOTP: {str(e)}")
                 return render_template("setup_2fa.html", qr_code_b64=generate_qr(session['pending_totp_secret'], email),
                                        error="Failed to save 2FA. Please try again.")
         else:
-            log_to_database("WARNING", 401, user_id, request.remote_addr, "/setup-2fa", "Invalid OTP during 2FA setup")
+            log_to_database(mysql,"WARNING", 401, user_id, request.remote_addr, "/setup-2fa", "Invalid OTP during 2FA setup")
             return render_template("setup_2fa.html", qr_code_b64=generate_qr(session['pending_totp_secret'], email),
                                    error="Invalid OTP")
 
@@ -1589,7 +1591,7 @@ def forbidden(e):
     path = request.path
     msg = "403 Forbidden"
     suspicious_logger.warning(f"{msg} - user_id: {user_id}, IP: {ip}, path: {path}")
-    log_to_database("WARNING", 403, user_id, ip, path, msg)
+    log_to_database(mysql,"WARNING", 403, user_id, ip, path, msg)
     return render_template("error.html", error=e), 403
 
 @app.errorhandler(404)
@@ -1599,7 +1601,7 @@ def not_found(e):
     path = request.path
     msg = "404 Not Found"
     suspicious_logger.warning(f"{msg} - user_id: {user_id}, IP: {ip}, path: {path}")
-    log_to_database("WARNING", 404, user_id, ip, path, msg)
+    log_to_database(mysql,"WARNING", 404, user_id, ip, path, msg)
     return render_template("error.html", error=e), 404
 
 @app.errorhandler(400)
@@ -1609,7 +1611,7 @@ def bad_request(e):
     path = request.path
     msg = "400 Bad Request"
     suspicious_logger.warning(f"{msg} - user_id: {user_id}, IP: {ip}, path: {path}")
-    log_to_database("WARNING", 400, user_id, ip, path, msg)
+    log_to_database(mysql,"WARNING", 400, user_id, ip, path, msg)
     return render_template("error.html", error=e), 400
 
 app.config['MYSQL_HOST'] = os.getenv('MYSQL_HOST')
@@ -1628,18 +1630,6 @@ suspicious_logger.addHandler(file_handler)
 
 mysql = MySQL(app)
 
-def log_to_database(type, status_code, user_id, ip_address, path, message):
-
-    # Get the real IP address dued to proxy
-    real_ip = request.headers.get('X-Real-IP', ip_address)
-
-    cur = mysql.connection.cursor()
-    cur.execute("""
-        INSERT INTO logs (timestamp, type, status_code, user_id, ip_address, path, message)
-        VALUES (%s, %s, %s, %s, %s, %s, %s)
-    """, (datetime.now(), type, status_code, str(user_id), real_ip, path, message))
-    mysql.connection.commit()
-    cur.close()
 
 if __name__ == "__main__":
     app.run(debug=True, host="0.0.0.0", port=443)
