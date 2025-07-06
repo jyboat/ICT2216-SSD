@@ -4,7 +4,7 @@
 {% block dropdown_items %}
   {{ super() }}
   <li>
-    <a class="dropdown-item" href="{{ url_for('manage_courses') }}">
+    <a class="dropdown-item" href="{{ url_for('course.manage_courses') }}">
       Courses
     </a>
   </li>
@@ -89,12 +89,12 @@
         <td>{{ educator_id }}</td>
         <td>
           <a
-            href="{{ url_for('edit_course', course_id=id) }}"
+            href="{{ url_for('course.edit_course', course_id=id) }}"
             class="btn btn-sm btn-warning"
           >Edit</a>
           <form
             method="post"
-            action="{{ url_for('delete_course', course_id=id) }}"
+            action="{{ url_for('course.delete_course', course_id=id) }}"
             style="display:inline;"
             onsubmit="return confirm('Delete this course?');"
           >

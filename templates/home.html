@@ -13,7 +13,7 @@
             <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-3">
                 {% for id, code, name in courses %}
                 <div class="col">
-                    <a href="{{ url_for('view_course', course_id=id) }}" class="text-decoration-none text-dark">
+                    <a href="{{ url_for('course.view_course', course_id=id) }}" class="text-decoration-none text-dark">
                         <div class="card h-100 border-0 shadow-sm hover-shadow">
                             <img src="https://picsum.photos/seed/{{ code }}/400/200"
                                  class="card-img-top rounded-top" alt="Course Image">
