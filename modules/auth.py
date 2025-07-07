@@ -64,8 +64,8 @@ def register_auth_routes(app, mysql, bcrypt, serializer):
 
     @auth_bp.route('/login', methods=['GET', 'POST'])
     def login():
-        if is_logged_in(mysql):
-            return redirect(url_for('home'))
+        #if is_logged_in(mysql):
+        #    return redirect(url_for('home'))
 
         error_param = request.args.get('error')
         error_message = None
@@ -133,6 +133,16 @@ def register_auth_routes(app, mysql, bcrypt, serializer):
             if user:
                 stored_hash = user[3]
                 if bcrypt.check_password_hash(stored_hash, password):
+                    cur.execute("SELECT session_token FROM users WHERE id = %s", (user[0],))
+                    existing_session = cur.fetchone()[0]
+
+                    if existing_session:
+                        cur.close()
+                        return render_template("login_warning.html",
+                                                email=email,
+                                                password=password,
+                                                remember_me=request.form.get('remember_me'))
+                    
                     session['temp_user_id'] = user[0]
 
                     if request.form.get('remember_me') == 'on':
