@@ -348,14 +348,18 @@ def register_auth_routes(app, mysql, bcrypt, serializer):
         email = request.form.get('email')
         password = request.form.get('password')
         remember_me = request.form.get('remember_me')
+        
+        print(f"Action: {action}")
 
-        if action == 'continue':
+        if action == "continue":
             # Proceed with login and invalidate other session
             cur = mysql.connection.cursor()
             cur.execute("SELECT * FROM users WHERE email = %s", (email,))
             user = cur.fetchone()
 
+            print(f"User: {bool(user)}")
             if user and bcrypt.check_password_hash(user[3], password):
+                print("Password verified")
                 # Set temporary session data for 2FA verification
                 session['temp_user_id'] = user[0]
 
