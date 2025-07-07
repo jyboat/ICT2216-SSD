@@ -349,7 +349,8 @@ def register_auth_routes(app, mysql, bcrypt, serializer):
         password = request.form.get('password')
         remember_me = request.form.get('remember_me')
         
-        print(f"Action: {action}")
+        log_to_database(mysql, "INFO", 200, 'Unauthenticated', request.remote_addr, "/handle-login-warning",
+                    f"Login warning handler called with action: {action}")
 
         if action == "continue":
             # Proceed with login and invalidate other session
@@ -371,6 +372,8 @@ def register_auth_routes(app, mysql, bcrypt, serializer):
                 # Nullify the existing session token
                 cur.execute("UPDATE users SET session_token = NULL WHERE id = %s", (user[0],))
                 mysql.connection.commit()
+                log_to_database(mysql, "INFO", 200, user[0], request.remote_addr, "/handle-login-warning",
+                                "Successfully processed login warning, redirecting to 2FA verification")
                 cur.close()
 
                 # Check if user needs to set up 2FA
