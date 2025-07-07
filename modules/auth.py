@@ -67,7 +67,7 @@ def register_auth_routes(app, mysql, bcrypt, serializer):
     def login():
         #if is_logged_in(mysql):
         #    return redirect(url_for('home'))
-
+        print('LOGIN PAGE REACHED')
         error_param = request.args.get('error')
         error_message = None
         if error_param == 'session_expired':

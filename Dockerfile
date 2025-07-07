@@ -23,5 +23,8 @@ COPY . .
 # Expose port 80
 EXPOSE 443
 
+# debug
+ENV PYTHONUNBUFFERED=1
+
 # Run the app
 CMD ["python", "app.py"]
