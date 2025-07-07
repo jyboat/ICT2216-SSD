@@ -146,11 +146,10 @@ def register_auth_routes(app, mysql, bcrypt, serializer):
                         }
                         
                         print('LOGIN SESSION:', dict(session))
-                        # return render_template("login_warning.html",
-                        #                         email=email,
-                        #                         password=password,
-                        #                         remember_me=request.form.get('remember_me'))
-                        return redirect(url_for('auth.login_warning'))
+                        return render_template("login_warning.html",
+                                                email=email,
+                                                password=password,
+                                                remember_me=request.form.get('remember_me'))
                     
                     session['temp_user_id'] = user[0]
 
@@ -349,16 +348,7 @@ def register_auth_routes(app, mysql, bcrypt, serializer):
                                        error="Invalid OTP")
 
         return render_template("setup_2fa.html", qr_code_b64=generate_qr(session['pending_totp_secret'], email))
-
-    @auth_bp.route('/login-warning', methods=['GET'])
-    def login_warning():
-        pending = session.get('pending_login')
-        if not pending:
-            return redirect(url_for('auth.login'))
-        
-        return render_template("login_warning.html",
-                            email=pending['email'],
-                            remember_me=pending.get('remember_me'))
+    
     # login warning handler
     @auth_bp.route('/handle-login-warning', methods=['POST'])
     def handle_login_warning():
