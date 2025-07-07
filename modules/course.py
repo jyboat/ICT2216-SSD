@@ -215,6 +215,6 @@ def register_course_routes(app, mysql):
         cur.execute("DELETE FROM courses WHERE id=%s", (course_id,))
         mysql.connection.commit()
         cur.close()
-        return redirect(url_for('login'))
+        return redirect(url_for('course.manage_courses'))
 
     app.register_blueprint(course_bp)
