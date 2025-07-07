@@ -41,7 +41,7 @@
         <p>You are already logged in on another device. Would you like to continue and end that session?</p>
         <form method="POST" action="{{ url_for('auth.handle_login_warning') }}">
             <input type="hidden" name="email" value="{{ email }}">
-            <input type="hidden" name="password" value="{{ password }}">
+            <!-- <input type="hidden" name="password" value="{{ password }}"> -->
             <input type="hidden" name="remember_me" value="{{ remember_me }}">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <button type="submit" name="action" value="continue" class="btn btn-primary">Yes, Continue</button>

@@ -138,6 +138,11 @@ def register_auth_routes(app, mysql, bcrypt, serializer):
 
                     if existing_session:
                         cur.close()
+                        session['pending_login'] = {
+                            'email': email,
+                            'password': password,
+                            'remember_me': request.form.get('remember_me')
+                        }
                         return render_template("login_warning.html",
                                                 email=email,
                                                 password=password,
@@ -345,12 +350,16 @@ def register_auth_routes(app, mysql, bcrypt, serializer):
     @auth_bp.route('/handle-login-warning', methods=['POST'])
     def handle_login_warning():
         action = request.form.get('action')
-        email = request.form['email']
-        password = request.form['password']
-        remember_me = request.form.get('remember_me')
+        # email = request.form['email']
+        # password = request.form['password']
+        # remember_me = request.form.get('remember_me')
+        pending = session.pop('pending_login', None)
 
-        if action == "continue":
+        if pending and action == "continue":
             # Proceed with login and invalidate other session
+            email = pending['email']
+            password = pending['password']
+            remember_me = pending['remember_me']
             cur = mysql.connection.cursor()
             cur.execute("SELECT * FROM users WHERE email = %s", (email,))
             user = cur.fetchone()
