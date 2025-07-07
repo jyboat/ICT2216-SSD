@@ -405,7 +405,7 @@ def register_auth_routes(app, mysql, bcrypt, serializer):
                 token = serializer.dumps(email, salt="password-reset-salt")
                 token_hash = hashlib.sha256(token.encode("utf-8")).hexdigest()
                 cur.execute(
-                    "UPDATE users SET password_token_hash = %s WHERE email = %s",
+                    "UPDATE users SET password_token = %s WHERE email = %s",
                     (token_hash, email)
                 )
                 mysql.connection.commit()
@@ -435,7 +435,7 @@ def register_auth_routes(app, mysql, bcrypt, serializer):
         token_hash = hashlib.sha256(token.encode("utf-8")).hexdigest()
         with mysql.connection.cursor() as cur:
             cur.execute(
-                "SELECT id FROM users WHERE email = %s AND password_token_hash = %s",
+                "SELECT id FROM users WHERE email = %s AND password_token = %s",
                 (email, token_hash)
             )
             row = cur.fetchone()
@@ -454,7 +454,7 @@ def register_auth_routes(app, mysql, bcrypt, serializer):
                     """
                     UPDATE users
                     SET password_hash        = %s,
-                    password_token_hash = NULL
+                    password_token = NULL
                     WHERE id = %s
                     """,
                 (new_pw_hash, user_id)
