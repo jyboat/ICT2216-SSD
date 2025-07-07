@@ -43,7 +43,7 @@ def register_announcement_routes(app, mysql):
                 """, (course_id, user_id, title, content))
             mysql.connection.commit()
             cur.close()
-            return redirect(url_for("view_course", course_id=course_id))
+            return redirect(url_for("course.view_course", course_id=course_id))
 
         cur.close()
         return render_template("announcement_form.html", course_id=course_id, role=role, user_name=user_name)
@@ -85,7 +85,7 @@ def register_announcement_routes(app, mysql):
             mysql.connection.commit()
             cur.close()
 
-            return redirect(url_for("view_course", course_id=course_id))
+            return redirect(url_for("course.view_course", course_id=course_id))
 
         cur.close()
         return render_template("edit_announcement.html", title=current_title, content=current_content,
@@ -116,6 +116,6 @@ def register_announcement_routes(app, mysql):
         mysql.connection.commit()
         cur.close()
 
-        return redirect(url_for("view_course", course_id=course_id))
+        return redirect(url_for("course.view_course", course_id=course_id))
 
     app.register_blueprint(announcement_bp)
