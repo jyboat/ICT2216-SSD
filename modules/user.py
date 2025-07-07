@@ -9,9 +9,9 @@ def register_user_routes(app, mysql, bcrypt):
     @user_bp.route("/admin/users")
     def manage_users():
         if 'user_id' not in session:
-            return redirect(url_for('login'))
+            return redirect(url_for('auth.login'))
         elif is_session_expired(mysql):
-            return redirect(url_for('login', error='session_expired'))
+            return redirect(url_for('auth.login', error='session_expired'))
 
         if session.get('role') != 'admin':
             abort(403, description="Admin access required")
@@ -69,9 +69,9 @@ def register_user_routes(app, mysql, bcrypt):
     @user_bp.route("/admin/users/add", methods=["GET", "POST"])
     def add_user():
         if 'user_id' not in session:
-            return redirect(url_for('login'))
+            return redirect(url_for('auth.login'))
         elif is_session_expired(mysql):
-            return redirect(url_for('login', error='session_expired'))
+            return redirect(url_for('auth.login', error='session_expired'))
 
         if session.get('role') != 'admin':
             abort(403, description="Admin access required")
@@ -117,9 +117,9 @@ def register_user_routes(app, mysql, bcrypt):
     @user_bp.route("/admin/users/<int:user_id>/edit", methods=["GET", "POST"])
     def edit_user(user_id):
         if 'user_id' not in session:
-            return redirect(url_for('login'))
+            return redirect(url_for('auth.login'))
         elif is_session_expired(mysql):
-            return redirect(url_for('login', error='session_expired'))
+            return redirect(url_for('auth.login', error='session_expired'))
 
         if session.get('role') != 'admin':
             abort(403, description="Admin access required")
@@ -192,9 +192,9 @@ def register_user_routes(app, mysql, bcrypt):
     @user_bp.route("/admin/users/<int:user_id>/delete", methods=["POST"])
     def delete_user(user_id):
         if 'user_id' not in session:
-            return redirect(url_for('login'))
+            return redirect(url_for('auth.login'))
         elif is_session_expired(mysql):
-            return redirect(url_for('login', error='session_expired'))
+            return redirect(url_for('auth.login', error='session_expired'))
 
         if session.get('role') != 'admin':
             abort(403, description="Admin access required")

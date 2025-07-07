@@ -9,9 +9,9 @@ def register_course_routes(app, mysql):
     @course_bp.route("/courses/<int:course_id>")
     def view_course(course_id):
         if 'user_id' not in session:
-            return redirect(url_for('login'))
+            return redirect(url_for('auth.login'))
         elif is_session_expired(mysql):
-            return redirect(url_for('login', error='session_expired'))
+            return redirect(url_for('auth.login', error='session_expired'))
 
         user_id = get_current_user_id()
         cur = mysql.connection.cursor()
@@ -56,9 +56,9 @@ def register_course_routes(app, mysql):
     def manage_courses():
 
         if 'user_id' not in session:
-            return redirect(url_for('login'))
+            return redirect(url_for('auth.login'))
         elif is_session_expired(mysql):
-            return redirect(url_for('login', error='session_expired'))
+            return redirect(url_for('auth.login', error='session_expired'))
         if session.get('role') != 'admin':
             abort(403, description="Admin access required")
 
@@ -125,9 +125,9 @@ def register_course_routes(app, mysql):
     @course_bp.route("/admin/courses/<int:course_id>/edit", methods=["GET", "POST"])
     def edit_course(course_id):
         if 'user_id' not in session:
-            return redirect(url_for('login'))
+            return redirect(url_for('auth.login'))
         elif is_session_expired(mysql):
-            return redirect(url_for('login', error='session_expired'))
+            return redirect(url_for('auth.login', error='session_expired'))
         if session.get('role') != 'admin':
             abort(403, description="Admin access required")
 
@@ -200,9 +200,9 @@ def register_course_routes(app, mysql):
     @course_bp.route("/admin/courses/<int:course_id>/delete", methods=["POST"])
     def delete_course(course_id):
         if 'user_id' not in session:
-            return redirect(url_for('login'))
+            return redirect(url_for('auth.login'))
         elif is_session_expired(mysql):
-            return redirect(url_for('login', error='session_expired'))
+            return redirect(url_for('auth.login', error='session_expired'))
         if session.get('role') != 'admin':
             abort(403, description="Admin access required")
 
@@ -215,6 +215,6 @@ def register_course_routes(app, mysql):
         cur.execute("DELETE FROM courses WHERE id=%s", (course_id,))
         mysql.connection.commit()
         cur.close()
-        return redirect(url_for('course.manage_courses'))
+        return redirect(url_for('login'))
 
     app.register_blueprint(course_bp)

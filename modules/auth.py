@@ -404,7 +404,7 @@ def register_auth_routes(app, mysql, bcrypt, serializer):
             )
         except SignatureExpired:
             flash("That link has expired. Please request a new one.", "warning")
-            return redirect(url_for("forget_password"))
+            return redirect(url_for("auth.forget_password"))
         except BadSignature:
             flash("Invalid reset link.", "danger")
             return redirect(url_for("auth.forget_password"))

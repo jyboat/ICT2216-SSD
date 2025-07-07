@@ -9,9 +9,9 @@ def register_material_routes(app, mysql):
     @material_bp.route("/materials/<int:material_id>/download")
     def download_material(material_id):
         if 'user_id' not in session:
-            return redirect(url_for('login'))
+            return redirect(url_for('auth.login'))
         elif is_session_expired(mysql):
-            return redirect(url_for('login', error='session_expired'))
+            return redirect(url_for('auth.login', error='session_expired'))
 
         user_id = get_current_user_id()
         cur = mysql.connection.cursor()
@@ -57,9 +57,9 @@ def register_material_routes(app, mysql):
     @material_bp.route("/materials/<int:material_id>/edit", methods=["GET", "POST"])
     def edit_material(material_id):
         if 'user_id' not in session:
-            return redirect(url_for('login'))
+            return redirect(url_for('auth.login'))
         elif is_session_expired(mysql):
-            return redirect(url_for('login', error='session_expired'))
+            return redirect(url_for('auth.login', error='session_expired'))
 
         user_id = get_current_user_id()
         cur = mysql.connection.cursor()
@@ -120,9 +120,9 @@ def register_material_routes(app, mysql):
     @material_bp.route("/materials/<int:material_id>/delete", methods=["POST"])
     def delete_material(material_id):
         if 'user_id' not in session:
-            return redirect(url_for('login'))
+            return redirect(url_for('auth.login'))
         elif is_session_expired(mysql):
-            return redirect(url_for('login', error='session_expired'))
+            return redirect(url_for('auth.login', error='session_expired'))
 
         user_id = get_current_user_id()
         cur = mysql.connection.cursor()
@@ -146,9 +146,9 @@ def register_material_routes(app, mysql):
     @material_bp.route("/courses/<int:course_id>/upload", methods=["GET", "POST"])
     def upload_material(course_id):
         if 'user_id' not in session:
-            return redirect(url_for('login'))
+            return redirect(url_for('auth.login'))
         elif is_session_expired(mysql):
-            return redirect(url_for('login', error='session_expired'))
+            return redirect(url_for('auth.login', error='session_expired'))
 
         user_id = get_current_user_id()
         cur = mysql.connection.cursor()

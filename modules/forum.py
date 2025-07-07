@@ -11,9 +11,9 @@ def register_forum_routes(app, mysql):
     @forum_bp.route("/courses/<int:course_id>/forum", methods=["GET", "POST"])
     def course_forum(course_id):
         if 'user_id' not in session:
-            return redirect(url_for('login'))
+            return redirect(url_for('auth.login'))
         elif is_session_expired(mysql):
-            return redirect(url_for('login', error='session_expired'))
+            return redirect(url_for('auth.login', error='session_expired'))
 
         user_id = get_current_user_id()
         cur = mysql.connection.cursor()
@@ -89,9 +89,9 @@ def register_forum_routes(app, mysql):
     @forum_bp.route("/courses/<int:course_id>/forum/posts/<int:post_id>/edit", methods=["GET", "POST"])
     def edit_post(post_id, course_id):
         if 'user_id' not in session:
-            return redirect(url_for('login'))
+            return redirect(url_for('auth.login'))
         elif is_session_expired(mysql):
-            return redirect(url_for('login', error='session_expired'))
+            return redirect(url_for('auth.login', error='session_expired'))
 
         user_id = get_current_user_id()
         cur = mysql.connection.cursor()
@@ -148,9 +148,9 @@ def register_forum_routes(app, mysql):
     @forum_bp.route("/forum/posts/<int:post_id>/delete", methods=["POST"])
     def delete_post(post_id):
         if 'user_id' not in session:
-            return redirect(url_for('login'))
+            return redirect(url_for('auth.login'))
         elif is_session_expired(mysql):
-            return redirect(url_for('login', error='session_expired'))
+            return redirect(url_for('auth.login', error='session_expired'))
 
         user_id = get_current_user_id()
         cur = mysql.connection.cursor()
