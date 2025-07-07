@@ -144,14 +144,12 @@ def register_auth_routes(app, mysql, bcrypt, serializer):
                             'password': password,
                             'remember_me': request.form.get('remember_me')
                         }
-                        pending = session['pending_login']
-                        if not pending:
-                            return redirect(url_for('auth.login'))
+                        
                         print('LOGIN SESSION:', dict(session))
                         return render_template("login_warning.html",
-                                                email=pending['email'],
-                                                #password=password,
-                                                remember_me=pending['remember_me'])
+                                                email=email,
+                                                password=password,
+                                                remember_me=request.form.get('remember_me'))
                     
                     session['temp_user_id'] = user[0]
 
