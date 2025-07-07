@@ -144,6 +144,7 @@ def register_auth_routes(app, mysql, bcrypt, serializer):
                             'password': password,
                             'remember_me': request.form.get('remember_me')
                         }
+                        print('LOGIN SESSION:', dict(session))
                         return render_template("login_warning.html",
                                                 email=email,
                                                 password=password,
@@ -350,6 +351,7 @@ def register_auth_routes(app, mysql, bcrypt, serializer):
     # login warning handler
     @auth_bp.route('/handle-login-warning', methods=['POST'])
     def handle_login_warning():
+        print('WARNING SESSION:', dict(session))
         action = request.form['action']
         # email = request.form['email']
         # password = request.form['password']
