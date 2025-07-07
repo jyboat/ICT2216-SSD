@@ -345,12 +345,9 @@ def register_auth_routes(app, mysql, bcrypt, serializer):
     @auth_bp.route('/handle-login-warning', methods=['POST'])
     def handle_login_warning():
         action = request.form.get('action')
-        email = request.form.get('email')
-        password = request.form.get('password')
+        email = request.form['email']
+        password = request.form['password']
         remember_me = request.form.get('remember_me')
-        
-        log_to_database(mysql, "INFO", 200, 'Unauthenticated', request.remote_addr, "/handle-login-warning",
-                    f"Login warning handler called with action: {action}")
 
         if action == "continue":
             # Proceed with login and invalidate other session
@@ -358,9 +355,7 @@ def register_auth_routes(app, mysql, bcrypt, serializer):
             cur.execute("SELECT * FROM users WHERE email = %s", (email,))
             user = cur.fetchone()
 
-            print(f"User: {bool(user)}")
             if user and bcrypt.check_password_hash(user[3], password):
-                print("Password verified")
                 # Set temporary session data for 2FA verification
                 session['temp_user_id'] = user[0]
 
@@ -372,8 +367,6 @@ def register_auth_routes(app, mysql, bcrypt, serializer):
                 # Nullify the existing session token
                 cur.execute("UPDATE users SET session_token = NULL WHERE id = %s", (user[0],))
                 mysql.connection.commit()
-                log_to_database(mysql, "INFO", 200, user[0], request.remote_addr, "/handle-login-warning",
-                                "Successfully processed login warning, redirecting to 2FA verification")
                 cur.close()
 
                 # Check if user needs to set up 2FA
