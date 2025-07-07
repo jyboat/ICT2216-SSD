@@ -387,7 +387,7 @@ def register_auth_routes(app, mysql, bcrypt, serializer):
                 return render_template("forget_password_sent.html")
 
             token = serializer.dumps(email, salt="password-reset-salt")
-            reset_url = url_for("reset_password", token=token, _external=True)
+            reset_url = url_for("auth.reset_password", token=token, _external=True)
             send_reset_email_via_sendgrid(email, reset_url)
 
             return render_template("forget_password_sent.html")
