@@ -46,7 +46,7 @@ class ResetPasswordForm(FlaskForm):
             Regexp(r'.*[A-Z].*', message="Must include at least one uppercase letter"),
             Regexp(r'.*[a-z].*', message="Must include at least one lowercase letter"),
             Regexp(r'.*[0-9].*', message="Must include at least one digit"),
-            Regexp(r'.*[!@#$%^&*(),.?\":{}|<>].*', message="Must include at least one special character")
+            Regexp(r'.*[!@#$%^&*(),.?":{}|<>].*',message="Must include at least one special character")
         ]
     )
     confirm = PasswordField(
