@@ -14,6 +14,7 @@ from modules.session_utils import is_logged_in, generate_fingerprint, suspicious
 from modules.email_utils import send_reset_email_via_sendgrid
 from modules.log import log_to_database
 from collections import defaultdict
+import hashlib
 
 auth_bp = Blueprint("auth", __name__)
 
@@ -138,6 +139,12 @@ def register_auth_routes(app, mysql, bcrypt, serializer):
 
                     if existing_session:
                         cur.close()
+                        session['pending_login'] = {
+                            'email': email,
+                            'password': password,
+                            'remember_me': request.form.get('remember_me')
+                        }
+                        print('LOGIN SESSION:', dict(session))
                         return render_template("login_warning.html",
                                                 email=email,
                                                 password=password,
@@ -344,13 +351,18 @@ def register_auth_routes(app, mysql, bcrypt, serializer):
     # login warning handler
     @auth_bp.route('/handle-login-warning', methods=['POST'])
     def handle_login_warning():
-        action = request.form.get('action')
-        email = request.form['email']
-        password = request.form['password']
-        remember_me = request.form.get('remember_me')
+        print('WARNING SESSION:', dict(session))
+        action = request.form['action']
+        # email = request.form['email']
+        # password = request.form['password']
+        # remember_me = request.form.get('remember_me')
+        pending = session.pop('pending_login', None)
 
-        if action == "continue":
+        if pending and action == "continue":
             # Proceed with login and invalidate other session
+            email = pending['email']
+            password = pending['password']
+            remember_me = pending['remember_me']
             cur = mysql.connection.cursor()
             cur.execute("SELECT * FROM users WHERE email = %s", (email,))
             user = cur.fetchone()
@@ -385,18 +397,21 @@ def register_auth_routes(app, mysql, bcrypt, serializer):
         if form.validate_on_submit():
             email = form.email.data.strip().lower()
 
-            cur = mysql.connection.cursor()
-            cur.execute(
-                "SELECT role FROM users WHERE email = %s",
-                (email,)
-            )
-            row = cur.fetchone()
-            cur.close()
+            with mysql.connection.cursor() as cur:
+                cur.execute("SELECT role FROM users WHERE email = %s",(email,))
+                row = cur.fetchone()
+            
+                if not row or row[0].lower() == "admin":
+                    return render_template("forget_password_sent.html")
 
-            if not row or row[0].lower() == "admin":
-                return render_template("forget_password_sent.html")
-
-            token = serializer.dumps(email, salt="password-reset-salt")
+                token = serializer.dumps(email, salt="password-reset-salt")
+                token_hash = hashlib.sha256(token.encode("utf-8")).hexdigest()
+                cur.execute(
+                    "UPDATE users SET password_token = %s WHERE email = %s",
+                    (token_hash, email)
+                )
+                mysql.connection.commit()
+            
             reset_url = url_for("auth.reset_password", token=token, _external=True)
             send_reset_email_via_sendgrid(email, reset_url)
 
@@ -418,20 +433,35 @@ def register_auth_routes(app, mysql, bcrypt, serializer):
         except BadSignature:
             flash("Invalid reset link.", "danger")
             return redirect(url_for("auth.forget_password"))
+        
+        token_hash = hashlib.sha256(token.encode("utf-8")).hexdigest()
+        with mysql.connection.cursor() as cur:
+            cur.execute(
+                "SELECT id FROM users WHERE email = %s AND password_token = %s",
+                (email, token_hash)
+            )
+            row = cur.fetchone()
+
+        if not row:
+            flash("This reset link is invalid or has expired.", "danger")
+            return redirect(url_for("auth.forget_password"))
+
+        user_id = row[0]
 
         form = ResetPasswordForm()
         if form.validate_on_submit():
-            hashed_pw = bcrypt.generate_password_hash(
-                form.password.data
-            ).decode("utf-8")
-
-            cur = mysql.connection.cursor()
-            cur.execute(
-                "UPDATE users SET password_hash = %s WHERE email = %s",
-                (hashed_pw, email)
-            )
-            mysql.connection.commit()
-            cur.close()
+            new_pw_hash = bcrypt.generate_password_hash(form.password.data).decode("utf-8")
+            with mysql.connection.cursor() as cur:
+                cur.execute(
+                    """
+                    UPDATE users
+                    SET password_hash        = %s,
+                    password_token = NULL
+                    WHERE id = %s
+                    """,
+                (new_pw_hash, user_id)
+                )
+                mysql.connection.commit()
 
             session.clear()
 
