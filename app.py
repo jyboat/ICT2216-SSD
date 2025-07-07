@@ -35,7 +35,8 @@ cf_secret_key = os.getenv("CF_SECRET_KEY")
 
 app.config['SESSION_TYPE'] = 'redis' 
 app.config['SESSION_PERMANENT'] = False
-app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(minutes=15) 
+#app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(minutes=15) 
+app.permanent_session_lifetime = timedelta(minutes=15)  # Set session lifetime to 1 day
 app.config['SESSION_COOKIE_SECURE'] = True  # Only send cookies over HTTPS
 app.config['SESSION_COOKIE_HTTPONLY'] = True  # Prevent JavaScript access
 app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'  # Controls cross-site requests
