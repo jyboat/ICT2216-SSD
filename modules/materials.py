@@ -194,6 +194,7 @@ def register_material_routes(app, mysql):
 
             title = request.form["title"]
             description = request.form["description"]
+            
 
             # Verify user permission
             cur = mysql.connection.cursor()
