@@ -46,7 +46,7 @@ app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'  # Controls cross-site requests
 def security_check():
     """Check for session hijacking on every request"""
     # Skip for non-authenticated routes
-    if request.endpoint in ['auth.login', 'auth.register', 'static', 'auth.verify_2fa', 'auth.setup_2fa', 'index', 'auth.logout', 'auth.forget_password', 'auth.reset_password']:
+    if request.endpoint in ['auth.login', 'auth.register', 'static', 'auth.verify_2fa', 'auth.setup_2fa', 'index', 'auth.logout', 'auth.forget_password', 'auth.reset_password','auth.handle_login_warning']:
         return
     
     # Check if user is logged in
