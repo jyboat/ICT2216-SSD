@@ -186,7 +186,8 @@ def register_material_routes(app, mysql):
             title = request.form["title"]
             description = request.form["description"]
             file_data = uploaded_file.read()
-
+            if not file_data.startswith(b"%PDF"):
+                abort(400, description="Invalid file content: not a valid PDF")
             # Verify user permission
             cur = mysql.connection.cursor()
             cur.execute("SELECT 1 FROM courses WHERE id = %s AND educator_id = %s", (course_id, user_id))
