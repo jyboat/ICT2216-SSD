@@ -178,7 +178,7 @@ def register_material_routes(app, mysql):
             # Sanitize and extract file metadata
 
             filename = secure_filename(uploaded_file.filename)
-            # mime_type = uploaded_file.mimetype
+            mime_type = uploaded_file.mimetype
             file_data = uploaded_file.read()
 
             # 🔐 Check file signature (magic number)
@@ -189,8 +189,8 @@ def register_material_routes(app, mysql):
             if len(file_data) > 10 * 1024 * 1024:  # 10 MB limit
                 abort(400, description="File too large")
 
-            # if not filename.lower().endswith(".pdf") or mime_type != "application/pdf":
-            #     abort(400, description="Only PDF files are allowed")
+            if not filename.lower().endswith(".pdf") or mime_type != "application/pdf":
+                abort(400, description="Only PDF files are allowed")
 
             title = request.form["title"]
             description = request.form["description"]
