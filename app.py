@@ -111,29 +111,42 @@ def home():
 
     cur = mysql.connection.cursor()
 
-    # Get courses the user is enrolled in (regardless of role)
-    cur.execute("""
-        SELECT c.id, c.course_code, c.name
-        FROM enrollments e
-        JOIN courses c ON e.course_id = c.id
-        WHERE e.user_id = %s
-    """, (user_id,))
-    courses = cur.fetchall()
+    announcements = []  
 
-    # Get announcements related to enrolled courses
-    cur.execute("""
-        SELECT a.title, a.content, a.posted_at, c.name
-        FROM announcements a
-        JOIN courses c ON a.course_id = c.id
-        JOIN enrollments e ON e.course_id = c.id
-        WHERE e.user_id = %s
-        ORDER BY a.posted_at DESC
-        LIMIT 5
-    """, (user_id,))
-    announcements = cur.fetchall()
+    if role == "student":
+        cur.execute("""
+            SELECT c.id, c.course_code, c.name
+            FROM enrollments e
+            JOIN courses c ON e.course_id = c.id
+            WHERE e.user_id = %s
+        """, (user_id,))
+        courses = cur.fetchall()
+
+        cur.execute("""
+            SELECT a.title, a.content, a.posted_at, c.name
+            FROM announcements a
+            JOIN courses c ON a.course_id = c.id
+            JOIN enrollments e ON e.course_id = c.id
+            WHERE e.user_id = %s
+            ORDER BY a.posted_at DESC
+            LIMIT 5
+        """, (user_id,))
+        announcements = cur.fetchall()
+
+    elif role == "educator":
+        # Get educator's courses
+        cur.execute("""
+            SELECT c.id, c.course_code, c.name
+            FROM courses c
+            WHERE c.educator_id = %s
+        """, (user_id,))
+        courses = cur.fetchall()
+        announcements = []
+
+    else:
+        courses = []
 
     cur.close()
-
     return render_template("home.html", user_name=user_name, role=role,
                            courses=courses, announcements=announcements)
 
