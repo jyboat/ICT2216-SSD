@@ -89,23 +89,32 @@ def register_user_routes(app, mysql, bcrypt):
             role = request.form["role"]
             selected_codes = request.form.getlist("course_codes")
 
+            # Check if email already exists
+            cur.execute("SELECT id FROM users WHERE email = %s", (email,))
+            if cur.fetchone():
+                error = "Email already exists. Please choose a different email."
+                cur.close()
+                return render_template("user_form.html", action="Add", user_name=user_name,
+                                    course_codes=course_codes, assigned_codes=[], error=error)
+
             hashed_pw = bcrypt.generate_password_hash(password).decode('utf-8')
             cur.execute("""
                 INSERT INTO users (name, email, password_hash, role, totp_secret)
                 VALUES (%s, %s, %s, %s, %s)
             """, (name, email, hashed_pw, role, ""))
+
             mysql.connection.commit()
             new_user_id = cur.lastrowid
+
             for code in selected_codes:
                 cur.execute("""
                     INSERT INTO enrollments (user_id, course_id)
                     VALUES (
-                      %s,
-                      (SELECT id FROM courses WHERE course_code = %s)
+                    %s,
+                    (SELECT id FROM courses WHERE course_code = %s)
                     )
                 """, (new_user_id, code))
             mysql.connection.commit()
-
             cur.close()
 
             return redirect(url_for("user.manage_users"))
