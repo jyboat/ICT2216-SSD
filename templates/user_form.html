@@ -5,6 +5,11 @@
 <div class="container py-4">
     <div class="card p-4">
         <h3>{{ action }} User</h3>
+        {% if error %}
+        <div class="alert alert-danger" role="alert">
+            {{ error }}
+        </div>
+        {% endif %}
         <form method="post">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <div class="mb-3">
