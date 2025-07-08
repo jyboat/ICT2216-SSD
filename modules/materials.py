@@ -128,7 +128,13 @@ def register_material_routes(app, mysql):
         cur = mysql.connection.cursor()
 
         # Confirm ownership and get course_id for redirect
-        cur.execute("SELECT course_id FROM materials WHERE id = %s AND uploader_id = %s", (material_id, user_id))
+        cur.execute("""
+            SELECT m.course_id
+            FROM materials AS m
+            JOIN courses   AS c ON m.course_id = c.id
+            WHERE m.id = %s
+            AND c.educator_id = %s
+            """, (material_id, user_id))
         result = cur.fetchone()
 
         if not result:
