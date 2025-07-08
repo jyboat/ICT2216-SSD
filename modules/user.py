@@ -97,13 +97,18 @@ def register_user_routes(app, mysql, bcrypt):
             mysql.connection.commit()
             new_user_id = cur.lastrowid
             for code in selected_codes:
-                cur.execute("""
-                    INSERT INTO enrollments (user_id, course_id)
-                    VALUES (
-                      %s,
-                      (SELECT id FROM courses WHERE course_code = %s)
-                    )
-                """, (new_user_id, code))
+                # Get course ID
+                cur.execute("SELECT id FROM courses WHERE course_code = %s", (code,))
+                course = cur.fetchone()
+                if course:
+                    course_id = course[0]
+
+                    # Assign educator to course if role is educator
+                    if role == "educator":
+                        cur.execute("UPDATE courses SET educator_id = %s WHERE id = %s", (new_user_id, course_id))
+
+                    # Enroll user to course
+                    cur.execute("INSERT IGNORE INTO enrollments (user_id, course_id) VALUES (%s, %s)", (new_user_id, course_id))
             mysql.connection.commit()
 
             cur.close()
