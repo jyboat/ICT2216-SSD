@@ -357,7 +357,8 @@ def register_auth_routes(app, mysql, bcrypt, serializer):
         # email = request.form['email']
         # password = request.form['password']
         # remember_me = request.form.get('remember_me')
-        pending = session.pop('pending_login', None)
+        # pending = session.pop('pending_login', None)
+        pending = session.get('pending_login')
 
         if pending and action == "continue":
             # Proceed with login and invalidate other session
@@ -382,6 +383,8 @@ def register_auth_routes(app, mysql, bcrypt, serializer):
                 mysql.connection.commit()
                 cur.close()
 
+                # Clear the pending login session
+                session.pop('pending_login', None)
                 # Check if user needs to set up 2FA
                 # if not user[6]:  # Assuming index 6 is totp_secret
                 # session['temp_new_user_email'] = email
