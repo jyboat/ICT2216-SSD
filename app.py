@@ -33,7 +33,7 @@ serializer = URLSafeTimedSerializer(app.secret_key)
 # cf key.
 cf_secret_key = os.getenv("CF_SECRET_KEY")
 
-app.config['SESSION_TYPE'] = 'redis' 
+
 app.config['SESSION_PERMANENT'] = False
 #app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(minutes=15) 
 app.permanent_session_lifetime = timedelta(minutes=15)  # Set session lifetime to 1 day
