@@ -106,9 +106,12 @@ def home():
     user_name = session['user_name']
     role = session['role']
 
+    if role == "admin":
+        return redirect(url_for("user.manage_users"))
+
     cur = mysql.connection.cursor()
 
-    # Fetch courses user is enrolled in
+    # Get courses the user is enrolled in (regardless of role)
     cur.execute("""
         SELECT c.id, c.course_code, c.name
         FROM enrollments e
@@ -117,7 +120,7 @@ def home():
     """, (user_id,))
     courses = cur.fetchall()
 
-    # Fetch announcements from enrolled courses
+    # Get announcements related to enrolled courses
     cur.execute("""
         SELECT a.title, a.content, a.posted_at, c.name
         FROM announcements a
@@ -133,7 +136,6 @@ def home():
 
     return render_template("home.html", user_name=user_name, role=role,
                            courses=courses, announcements=announcements)
-
 
 
 app.config['MYSQL_HOST'] = os.getenv('MYSQL_HOST')
