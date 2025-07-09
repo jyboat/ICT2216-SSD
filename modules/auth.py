@@ -445,21 +445,21 @@ def register_auth_routes(app, mysql, bcrypt, serializer):
                     cur.execute("SELECT role FROM users WHERE email = %s",(email,))
                     row = cur.fetchone()
             
-                if not row or row[0].lower() == "admin":
-                    return render_template("forget_password_sent.html")
+                    if not row or row[0].lower() == "admin":
+                        return render_template("forget_password_sent.html")
 
-                token = serializer.dumps(email, salt="password-reset-salt")
-                token_hash = hashlib.sha256(token.encode("utf-8")).hexdigest()
-                cur.execute(
-                    "UPDATE users SET password_token = %s WHERE email = %s",
+                    token = serializer.dumps(email, salt="password-reset-salt")
+                    token_hash = hashlib.sha256(token.encode("utf-8")).hexdigest()
+                    cur.execute(
+                        "UPDATE users SET password_token = %s WHERE email = %s",
                     (token_hash, email)
-                )
+                    )
                 mysql.connection.commit()
             
-            reset_url = url_for("auth.reset_password", token=token, _external=True)
-            send_reset_email_via_sendgrid(email, reset_url)
+                reset_url = url_for("auth.reset_password", token=token, _external=True)
+                send_reset_email_via_sendgrid(email, reset_url)
 
-            return render_template("forget_password_sent.html")
+                return render_template("forget_password_sent.html")
 
         return render_template("forget_password.html",errors=errors,email=email)
 
@@ -500,23 +500,23 @@ def register_auth_routes(app, mysql, bcrypt, serializer):
             confirm_pw = form.get("confirm", "")
             errors = validate_password_fields(pw, confirm_pw)
         
-        if not errors:
-            new_pw_hash = bcrypt.generate_password_hash(form.password.data).decode("utf-8")
-            with mysql.connection.cursor() as cur:
-                cur.execute(
+            if not errors:
+                new_pw_hash = bcrypt.generate_password_hash(form.password.data).decode("utf-8")
+                with mysql.connection.cursor() as cur:
+                    cur.execute(
                     """
                     UPDATE users
                     SET password_hash        = %s,
                     password_token = NULL
                     WHERE id = %s
                     """,
-                (new_pw_hash, user_id)
-                )
-                mysql.connection.commit()
+                    (new_pw_hash, user_id)
+                    )
+                    mysql.connection.commit()
 
-            session.clear()
+                session.clear()
 
-            return redirect(url_for("auth.login",success="Your password has been reset. Please login with your new password."))
+                return redirect(url_for("auth.login",success="Your password has been reset. Please login with your new password."))
 
         return render_template("reset_password.html", errors=errors)
 
