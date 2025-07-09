@@ -256,7 +256,7 @@ def register_auth_routes(app, mysql, bcrypt, serializer):
                     not re.search(r'[0-9]', password) or \
                     not re.search(r'[!@#$%^&*(),.?":{}|<>]', password):
                 return render_template("register.html",
-                                       error="Password must be at least 8 characters and include uppercase, lowercase, digit, and special character.",
+                                       error="Password must be at least 8 characters long and include an uppercase letter, a lowercase letter, a number, and a special character.",
                                        hide_header=True)
 
             # password hashing

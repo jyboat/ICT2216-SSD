@@ -102,7 +102,7 @@ def register_user_routes(app, mysql, bcrypt):
                 not re.search(r'[a-z]', password) or \
                 not re.search(r'[0-9]', password) or \
                 not re.search(r'[!@#$%^&*(),.?":{}|<>]', password):
-                error = "Password must be at least 8 characters and include uppercase, lowercase, digit, and special character."
+                error = "Password must be at least 8 characters long and include an uppercase letter, a lowercase letter, a number, and a special character."
                 cur.close()
                 return render_template("user_form.html", action="Add", user_name=user_name,
                                     course_codes=course_codes, assigned_codes=[], error=error)
