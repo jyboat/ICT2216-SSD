@@ -123,10 +123,6 @@ def csrf_protect():
     submitted = request.form.get("csrf_token","") or request.headers.get("X-CSRF-Token","")
     tokens = session.get("_csrf_tokens", [])
 
-    logger.warning("→ CSRF: submitted=%r", submitted)
-    logger.warning("→ CSRF: session tokens=%r", tokens)
-
-    
     for idx, tok in enumerate(tokens):
         if constant_time_compare(submitted, tok):
             tokens.pop(idx)
