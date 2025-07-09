@@ -1,6 +1,10 @@
 from flask import request
 from datetime import datetime
+import requests
 
+SPLUNK_HOST = "test_splunk_1"
+SPLUNK_HEC_PORT = "8088"
+SPLUNK_HEC_TOKEN = "e01244bd-6b33-44be-b270-f1a5d12d9871"
 
 def log_to_database(mysql, type, status_code, user_id, ip_address, path, message):
 
@@ -15,3 +19,17 @@ def log_to_database(mysql, type, status_code, user_id, ip_address, path, message
     mysql.connection.commit()
     cur.close()
 
+def log_to_splunk(event_data):
+    url = f"https://{SPLUNK_HOST}:{SPLUNK_HEC_PORT}/services/collector"
+    headers = {
+        "Authorization": f"Splunk {SPLUNK_HEC_TOKEN}",
+        "Content-Type": "application/json"
+    }
+    payload = {
+        "event": event_data,
+        "sourcetype": "login_attempts",
+    }
+    try:
+        requests.post(url, headers=headers, json=payload)
+    except Exception as e:
+        print(f"Failed to log to Splunk: {e}")

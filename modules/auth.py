@@ -12,7 +12,7 @@ import qrcode
 from itsdangerous import SignatureExpired, BadSignature
 from modules.session_utils import is_logged_in, generate_fingerprint, suspicious_logger
 from modules.email_utils import send_reset_email_via_sendgrid
-from modules.log import log_to_database
+from modules.log import *
 from collections import defaultdict
 import hashlib
 
@@ -22,7 +22,6 @@ auth_bp = Blueprint("auth", __name__)
 login_attempts = defaultdict(list)
 BLOCK_THRESHOLD = 5
 BLOCK_WINDOW = 600  # seconds
-
 
 def generate_qr(secret, email):
     totp = pyotp.TOTP(secret)
@@ -120,6 +119,14 @@ def register_auth_routes(app, mysql, bcrypt, serializer):
                 suspicious_logger.warning(f"Blocked login - too many attempts - IP: {ip}")
                 log_to_database(mysql, "WARNING", 429, 'Unauthenticated', ip, "/login",
                                 "Blocked login - too many attempts")
+                #Log to splunk
+                log_to_splunk({
+                    "event": "Blocked login - too many attempts",
+                    "ip_address": ip,
+                    "timestamp": datetime.now().isoformat(),
+                    "status_code": 429,
+                    "path": "/login"
+                })
                 return render_template("login.html", error="Too many failed attempts. Try again later.",
                                        hide_header=True)
 
@@ -169,11 +176,29 @@ def register_auth_routes(app, mysql, bcrypt, serializer):
                         f"Failed login (wrong password) - email: {email}, IP: {request.remote_addr}")
                     log_to_database(mysql, "WARNING", 401, 'Unauthenticated', request.remote_addr, "/login",
                                     f"Failed login (wrong password) - email: {email}")
+                    # Log to splunk
+                    log_to_splunk({
+                        "event": "Failed login (wrong password)",
+                        "email": email,
+                        "ip_address": request.remote_addr,
+                        "timestamp": datetime.now().isoformat(),
+                        "status_code": 401,
+                        "path": "/login"
+                    })
             else:
                 suspicious_logger.warning(
                     f"Failed login (no such user) - email: {email}, IP: {request.remote_addr}")
                 log_to_database(mysql, "WARNING", 401, 'Unauthenticated', request.remote_addr, "/login",
                                 f"Failed login (no such user) - email: {email}")
+                # Log to splunk
+                log_to_splunk({
+                    "event": "Failed login (no such user)",
+                    "email": email,
+                    "ip_address": request.remote_addr,
+                    "timestamp": datetime.now().isoformat(),
+                    "status_code": 401,
+                    "path": "/login"
+                })
 
         if request.method == 'POST':
             return render_template("login.html", error="Invalid email or password", hide_header=True)
