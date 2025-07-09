@@ -114,12 +114,12 @@ def register_auth_routes(app, mysql, bcrypt, serializer):
                 # If verification failed, return an error
                 if not verification_response.get('success'):
                     suspicious_logger.warning(f"Failed Cloudflare verification - IP: {ip}")
-                    log_to_database("WARNING", 400, 'Unauthenticated', ip, "/login", "Failed Cloudflare verification")
+                    log_to_database(mysql,"WARNING", 400, 'Unauthenticated', ip, "/login", "Failed Cloudflare verification")
                     return render_template("login.html", error="Security check failed. Please try again.", hide_header=True)
             except Exception as e:
                 # Handle request exceptions
                 suspicious_logger.error(f"Cloudflare verification error: {str(e)} - IP: {ip}")
-                log_to_database("ERROR", 500, 'Unauthenticated', ip, "/login", f"Cloudflare verification error: {str(e)}")
+                log_to_database(mysql,"ERROR", 500, 'Unauthenticated', ip, "/login", f"Cloudflare verification error: {str(e)}")
                 return render_template("login.html", error="An error occurred during verification. Please try again.", hide_header=True)
 
             # Clean old attempts
@@ -217,7 +217,7 @@ def register_auth_routes(app, mysql, bcrypt, serializer):
             # If no token was provided, return an error
             if not cf_turnstile_response:
                 suspicious_logger.warning(f"register attempt without Cloudflare verification - IP: {ip}")
-                log_to_database("WARNING", 400, 'Unauthenticated', ip, "/register", "Login attempt without Cloudflare verification")
+                log_to_database(mysql,"WARNING", 400, 'Unauthenticated', ip, "/register", "Login attempt without Cloudflare verification")
                 return render_template("register.html", error="Please complete the security check", hide_header=True)
 
             # Verify the token with Cloudflare
@@ -235,12 +235,12 @@ def register_auth_routes(app, mysql, bcrypt, serializer):
                 # If verification failed, return an error
                 if not verification_response.get('success'):
                     suspicious_logger.warning(f"Failed Cloudflare verification - IP: {ip}")
-                    log_to_database("WARNING", 400, 'Unauthenticated', ip, "/register", "Failed Cloudflare verification")
+                    log_to_database(mysql,"WARNING", 400, 'Unauthenticated', ip, "/register", "Failed Cloudflare verification")
                     return render_template("register.html", error="Security check failed. Please try again.", hide_header=True)
             except Exception as e:
                 # Handle request exceptions
                 suspicious_logger.error(f"Cloudflare verification error: {str(e)} - IP: {ip}")
-                log_to_database("ERROR", 500, 'Unauthenticated', ip, "/register", f"Cloudflare verification error: {str(e)}")
+                log_to_database(mysql,"ERROR", 500, 'Unauthenticated', ip, "/register", f"Cloudflare verification error: {str(e)}")
                 return render_template("register.html", error="An error occurred during verification. Please try again.", hide_header=True)
             
 
@@ -410,7 +410,7 @@ def register_auth_routes(app, mysql, bcrypt, serializer):
         # If no token was provided, return an error
         if not cf_turnstile_response:
             suspicious_logger.warning(f"Login attempt without Cloudflare verification - IP: {ip}")
-            log_to_database("WARNING", 400, 'Unauthenticated', ip, "/login_warning", "Login attempt without Cloudflare verification")
+            log_to_database(mysql,"WARNING", 400, 'Unauthenticated', ip, "/login_warning", "Login attempt without Cloudflare verification")
             return render_template("login_warning.html", error="Please complete the security check", hide_header=True)
 
         # Verify the token with Cloudflare
@@ -428,12 +428,12 @@ def register_auth_routes(app, mysql, bcrypt, serializer):
             # If verification failed, return an error
             if not verification_response.get('success'):
                 suspicious_logger.warning(f"Failed Cloudflare verification - IP: {ip}")
-                log_to_database("WARNING", 400, 'Unauthenticated', ip, "/login_warning", "Failed Cloudflare verification")
+                log_to_database(mysql,"WARNING", 400, 'Unauthenticated', ip, "/login_warning", "Failed Cloudflare verification")
                 return render_template("login_warning.html", error="Security check failed. Please try again.", hide_header=True)
         except Exception as e:
             # Handle request exceptions
             suspicious_logger.error(f"Cloudflare verification error: {str(e)} - IP: {ip}")
-            log_to_database("ERROR", 500, 'Unauthenticated', ip, "/login_warning", f"Cloudflare verification error: {str(e)}")
+            log_to_database(mysql,"ERROR", 500, 'Unauthenticated', ip, "/login_warning", f"Cloudflare verification error: {str(e)}")
             return render_template("login_warning.html", error="An error occurred during verification. Please try again.", hide_header=True)
 
         pending = session.get('pending_login')
@@ -505,7 +505,7 @@ def register_auth_routes(app, mysql, bcrypt, serializer):
         # If no token was provided, return an error
         if not cf_turnstile_response:
             suspicious_logger.warning(f"reset password attempt without Cloudflare verification - IP: {ip}")
-            log_to_database("WARNING", 400, 'Unauthenticated', ip, "/reset_password", "Login attempt without Cloudflare verification")
+            log_to_database(mysql,"WARNING", 400, 'Unauthenticated', ip, "/reset_password", "Login attempt without Cloudflare verification")
             return render_template("reset_password.html", error="Please complete the security check", hide_header=True)
 
         # Verify the token with Cloudflare
@@ -523,12 +523,12 @@ def register_auth_routes(app, mysql, bcrypt, serializer):
             # If verification failed, return an error
             if not verification_response.get('success'):
                 suspicious_logger.warning(f"Failed Cloudflare verification - IP: {ip}")
-                log_to_database("WARNING", 400, 'Unauthenticated', ip, "/reset_password", "Failed Cloudflare verification")
+                log_to_database(mysql,"WARNING", 400, 'Unauthenticated', ip, "/reset_password", "Failed Cloudflare verification")
                 return render_template("reset_password.html", error="Security check failed. Please try again.", hide_header=True)
         except Exception as e:
             # Handle request exceptions
             suspicious_logger.error(f"Cloudflare verification error: {str(e)} - IP: {ip}")
-            log_to_database("ERROR", 500, 'Unauthenticated', ip, "/reset_password", f"Cloudflare verification error: {str(e)}")
+            log_to_database(mysql,"ERROR", 500, 'Unauthenticated', ip, "/reset_password", f"Cloudflare verification error: {str(e)}")
             return render_template("reset_password.html", error="An error occurred during verification. Please try again.", hide_header=True)
         
             errors = validate_email_field(email)
