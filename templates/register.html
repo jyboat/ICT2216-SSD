@@ -37,7 +37,8 @@
                 <input type="password" name="confirm_password" id="formConfirmPassword" class="form-control" required />
                 <label class="form-label" for="formConfirmPassword">Confirm Password</label>
             </div>
-
+            <div class="cf-turnstile mb-4" data-sitekey="0x4AAAAAABiSoNF-HLeMbyoQ"></div>
+            
             <button type="submit" class="btn btn-primary w-100 mb-4">Register</button>
 
             <div class="text-center">
@@ -46,4 +47,5 @@
         </form>
     </div>
 </div>
+<script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
 {% endblock %}
