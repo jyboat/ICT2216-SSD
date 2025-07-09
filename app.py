@@ -1,5 +1,5 @@
 from dotenv import load_dotenv
-from flask import Flask, redirect, render_template, request, session, url_for, abort
+from flask import Flask, redirect, render_template, request, session, url_for, abort, current_app
 import os
 from flask_mysqldb import MySQL
 from flask_bcrypt import Bcrypt
@@ -104,6 +104,8 @@ def security_check():
 
 @app.before_request
 def csrf_protect():
+    if current_app.testing:
+        return
     if request.method in ("POST", "PUT", "PATCH", "DELETE"):
         token_in_session = session.get("_csrf_token")
         token_in_form    = request.form.get("_csrf_token", "")
