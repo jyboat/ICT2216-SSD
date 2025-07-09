@@ -16,9 +16,9 @@ from modules.materials import register_material_routes
 from modules.user import register_user_routes
 from modules.auth import register_auth_routes
 import secrets
-import logging
 
-logger = logging.getLogger(__name__)
+
+
 
 
 load_dotenv()  # Load environment variables from .env
