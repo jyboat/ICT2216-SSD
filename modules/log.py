@@ -30,6 +30,6 @@ def log_to_splunk(event_data):
         "sourcetype": "login_attempts",
     }
     try:
-        requests.post(url, headers=headers, json=payload)
+        requests.post(url, headers=headers, json=payload, verify=False)
     except Exception as e:
         print(f"Failed to log to Splunk: {e}")
