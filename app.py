@@ -53,10 +53,7 @@ def generate_csrf_token():
 app.jinja_env.globals["csrf_token"] = generate_csrf_token
 
 def constant_time_compare(a: str, b: str) -> bool:
-    """
-    Return True if a and b are exactly equal, False otherwise.
-    Always takes the same amount of time for any inputs of the same length.
-    """
+    # Ensure comparison takes same time
     if len(a) != len(b):
         return False
     result = 0
