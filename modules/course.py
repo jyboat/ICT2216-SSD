@@ -140,10 +140,10 @@ def register_course_routes(app, mysql):
             name = request.form.get("name", "").strip()
             description = request.form.get("description", "").strip()
             educator_raw = request.form.get("educator_id", "")
-            if not code or len(code) > 10:
-                abort(400, "Course code is required (max 10 chars)")
-            if not name or len(name) > 100:
-                abort(400, "Course name is required (max 100 chars)")
+            if not code or len(code) > 20:
+                abort(400, "Course code is required (max 20 chars)")
+            if not name or len(name) > 255:
+                abort(400, "Course name is required (max 255 chars)")
             if len(description) > 2000:
                 abort(400, "Description too long (max 2000 chars)")
 
