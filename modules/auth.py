@@ -1,8 +1,5 @@
 from flask import Blueprint, render_template, request, session, redirect, url_for, abort, flash
-from flask_wtf import FlaskForm
 import requests
-from wtforms import StringField, SubmitField, PasswordField
-from wtforms.validators import DataRequired, Email, Length, EqualTo, Regexp
 import re
 import time
 import pyotp
@@ -38,32 +35,6 @@ def generate_qr(secret, email):
     qr_img.save(buf, format='PNG')
     return base64.b64encode(buf.getvalue()).decode('utf-8')
 
-''' Old forms
-class ForgetPasswordForm(FlaskForm):
-    email = StringField('Email', validators=[DataRequired(), Email()])
-    submit = SubmitField('Send Reset Link')
-
-
-class ResetPasswordForm(FlaskForm):
-    password = PasswordField(
-        "New Password",
-        validators=[
-            DataRequired("Please enter a password"),
-            Length(min=8, message="Password must be at least 8 characters"),
-            Regexp(r'.*[A-Z].*', message="Must include at least one uppercase letter"),
-            Regexp(r'.*[a-z].*', message="Must include at least one lowercase letter"),
-            Regexp(r'.*[0-9].*', message="Must include at least one digit"),
-            Regexp(r'.*[!@#$%^&*(),.?":{}|<>].*',message="Must include at least one special character")
-        ]
-    )
-    confirm = PasswordField(
-        "Confirm Password",
-        validators=[
-            DataRequired("Please confirm your password"),
-            EqualTo("password", message="Passwords must match")
-        ]
-    )
-    submit = SubmitField("Reset Password") '''
 
 # Regular expressions for email and password validation
 EMAIL_REGEX = re.compile(r"[^@]+@[^@]+\.[^@]+")
