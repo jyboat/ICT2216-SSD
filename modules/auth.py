@@ -545,28 +545,28 @@ def register_auth_routes(app, mysql, bcrypt, serializer):
             log_to_database(mysql,"ERROR", 500, 'Unauthenticated', ip, "/forget_password", f"Cloudflare verification error: {str(e)}")
             return render_template("forget_password.html", error="An error occurred during verification. Please try again.", hide_header=True)
         
-            errors = validate_email_field(email)
+        errors = validate_email_field(email)
 
-            if not errors:
-                with mysql.connection.cursor() as cur:
-                    cur.execute("SELECT role FROM users WHERE email = %s",(email,))
-                    row = cur.fetchone()
-            
-                    if not row or row[0].lower() == "admin":
-                        return render_template("forget_password_sent.html")
+        if not errors:
+            with mysql.connection.cursor() as cur:
+                cur.execute("SELECT role FROM users WHERE email = %s",(email,))
+                row = cur.fetchone()
+        
+                if not row or row[0].lower() == "admin":
+                    return render_template("forget_password_sent.html")
 
-                    token = serializer.dumps(email, salt="password-reset-salt")
-                    token_hash = hashlib.sha256(token.encode("utf-8")).hexdigest()
-                    cur.execute(
-                        "UPDATE users SET password_token = %s WHERE email = %s",
-                    (token_hash, email)
-                    )
-                mysql.connection.commit()
-            
-                reset_url = url_for("auth.reset_password", token=token, _external=True)
-                send_reset_email_via_sendgrid(email, reset_url)
+                token = serializer.dumps(email, salt="password-reset-salt")
+                token_hash = hashlib.sha256(token.encode("utf-8")).hexdigest()
+                cur.execute(
+                    "UPDATE users SET password_token = %s WHERE email = %s",
+                (token_hash, email)
+                )
+            mysql.connection.commit()
+        
+            reset_url = url_for("auth.reset_password", token=token, _external=True)
+            send_reset_email_via_sendgrid(email, reset_url)
 
-                return render_template("forget_password_sent.html", hide_header=True)
+            return render_template("forget_password_sent.html", hide_header=True)
 
         return render_template("forget_password.html",errors=errors,email=email, hide_header=True)
 
