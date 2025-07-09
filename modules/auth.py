@@ -459,9 +459,9 @@ def register_auth_routes(app, mysql, bcrypt, serializer):
                 reset_url = url_for("auth.reset_password", token=token, _external=True)
                 send_reset_email_via_sendgrid(email, reset_url)
 
-                return render_template("forget_password_sent.html")
+                return render_template("forget_password_sent.html", hide_header=True)
 
-        return render_template("forget_password.html",errors=errors,email=email)
+        return render_template("forget_password.html",errors=errors,email=email, hide_header=True)
 
     @auth_bp.route("/reset/<token>", methods=["GET", "POST"])
     def reset_password(token):
@@ -501,23 +501,23 @@ def register_auth_routes(app, mysql, bcrypt, serializer):
             errors = validate_password_fields(pw, confirm_pw)
         
             if not errors:
-                new_pw_hash = bcrypt.generate_password_hash(form.password.data).decode("utf-8")
+                new_pw_hash = bcrypt.generate_password_hash(pw).decode("utf-8")
                 with mysql.connection.cursor() as cur:
                     cur.execute(
                     """
                     UPDATE users
-                    SET password_hash        = %s,
+                    SET password_hash = %s,
                     password_token = NULL
                     WHERE id = %s
                     """,
                     (new_pw_hash, user_id)
                     )
-                    mysql.connection.commit()
+                mysql.connection.commit()
 
                 session.clear()
+                flash("Your password has been reset. Please log in with your new password.", "success")
+                return redirect(url_for("auth.login",hide_header=True))
 
-                return redirect(url_for("auth.login",success="Your password has been reset. Please login with your new password."))
-
-        return render_template("reset_password.html", errors=errors)
+        return render_template("reset_password.html", errors=errors, hide_header=True)
 
     app.register_blueprint(auth_bp)
