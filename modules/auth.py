@@ -39,10 +39,6 @@ def generate_qr(secret, email):
 
 # Regular expressions for email and password validation
 EMAIL_REGEX = re.compile(r"[^@]+@[^@]+\.[^@]+")
-PWD_UPPER = re.compile(r".*[A-Z].*")
-PWD_LOWER = re.compile(r".*[a-z].*")
-PWD_DIGIT = re.compile(r".*[0-9].*")
-PWD_SPECIAL = re.compile(r'.*[!@#$%^&*(),.?":{}|<>].*')
 
 def validate_email_field(email):
     errors = []
@@ -59,13 +55,15 @@ def validate_password_fields(pw, confirm_pw):
     else:
         if len(pw) < 8:
             errors.append("Password must be at least 8 characters.")
-        if not PWD_UPPER.search(pw):
+        if not any(c.isupper() for c in pw):
             errors.append("Must include at least one uppercase letter.")
-        if not PWD_LOWER.search(pw):
+        if not any(c.islower() for c in pw):
             errors.append("Must include at least one lowercase letter.")
-        if not PWD_DIGIT.search(pw):
+        if not any(c.isdigit() for c in pw):
             errors.append("Must include at least one digit.")
-        if not PWD_SPECIAL.search(pw):
+        
+        specials = '!@#$%^&*(),.?":{}|<>'
+        if not any(c in specials for c in pw):
             errors.append("Must include at least one special character.")
     if pw and not confirm_pw:
         errors.append("Please confirm your password.")
