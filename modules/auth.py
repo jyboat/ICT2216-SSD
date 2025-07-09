@@ -209,11 +209,11 @@ def register_auth_routes(app, mysql, bcrypt, serializer):
 
     @auth_bp.route('/register', methods=['GET', 'POST'])
     def register():
-        ip = request.remote_addr
+        
         if is_logged_in(mysql):
             return redirect(url_for('home'))
         if request.method == 'POST':
-
+            ip = request.remote_addr
             # Skip Cloudflare check if running in test mode
             if current_app.config.get("TESTING"):
                 pass  # Skip verification for unit tests
