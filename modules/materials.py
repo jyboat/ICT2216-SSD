@@ -44,7 +44,7 @@ def register_material_routes(app, mysql):
         cur.close()
 
         if not result:
-            abort(404, description="Materials not found")
+            abort(404, description="Access denied")
 
         file_name, mime_type, file_data = result
 
@@ -170,14 +170,14 @@ def register_material_routes(app, mysql):
         user = cur.fetchone()
         if not user:
             cur.close()
-            abort(404, description="User not found")
+            abort(404, description="Access denied")
 
         user_name, role = user
 
         # Only allow educators to upload
         if role != "educator":
             cur.close()
-            abort(403, description="Access denied: only educators can upload materials")
+            abort(403, description="Access denied")
 
         cur.close()
 
@@ -185,7 +185,7 @@ def register_material_routes(app, mysql):
             # Get uploaded file
             uploaded_file = request.files["file"]
             if not uploaded_file or uploaded_file.filename == "":
-                abort(400, description="No File Selected")
+                abort(400, description="Access denied")
 
             # Sanitize and extract file metadata
 
@@ -195,14 +195,14 @@ def register_material_routes(app, mysql):
 
             # 🔐 Check file signature (magic number)
             if not file_data.startswith(b'%PDF-'):
-                abort(400, description="Invalid file type. Only genuine PDF files are allowed.")
+                abort(400, description="Access denied")
 
             # limit size
             if len(file_data) > 10 * 1024 * 1024:  # 10 MB limit
-                abort(400, description="File too large")
+                abort(400, description="Access denied")
 
             if not filename.lower().endswith(".pdf") or mime_type != "application/pdf":
-                abort(400, description="Only PDF files are allowed")
+                abort(400, description="Access denied")
 
             title = request.form["title"]
             description = request.form["description"]

@@ -100,7 +100,7 @@ def register_forum_routes(app, mysql):
         result = cur.fetchone()
         if not result:
             cur.close()
-            abort(404, description="Post not found")
+            abort(404, description="Access denied")
 
         author_id, content, thread_id = result
 
@@ -112,7 +112,7 @@ def register_forum_routes(app, mysql):
         tc = cur.fetchone()
         if not tc or tc[0] != course_id:
             cur.close()
-            abort(404, "That post isn’t in this course’s forum")
+            abort(404, "Access denied")
 
         if author_id != user_id:
             cur.execute("""
@@ -137,7 +137,7 @@ def register_forum_routes(app, mysql):
             cur.close()
 
             if not course_result:
-                abort(404, description="Course not found")
+                abort(404, description="Access denied")
 
             course_id = course_result[0]
             return redirect(url_for("forum.course_forum", course_id=course_id))
@@ -165,7 +165,7 @@ def register_forum_routes(app, mysql):
         results = cur.fetchone()
         if not results:
             cur.close()
-            abort(404, description="Post not found")
+            abort(404, description="Access denied")
         course_id, educator_id = results
 
   

@@ -60,7 +60,7 @@ def register_course_routes(app, mysql):
         elif is_session_expired(mysql):
             return redirect(url_for('auth.login', error='session_expired'))
         if session.get('role') != 'admin':
-            abort(403, description="Admin access required")
+            return redirect(url_for('home'))
 
         admin_id = get_current_user_id()
         cur = mysql.connection.cursor()
@@ -81,9 +81,9 @@ def register_course_routes(app, mysql):
             try:
                 educator_id = int(raw_edu)
             except ValueError:
-                abort(400, "Invalid educator selected")
+                abort(400, "Access denied")
             if educator_id not in {e[0] for e in educators}:
-                abort(400, "Unknown educator")
+                abort(400, "Access denied")
             cur.execute("SELECT 1 FROM courses WHERE course_code = %s", (code,))
             if cur.fetchone():
                 flash(f"Course code “{code}” already exists.", "warning")
@@ -129,7 +129,7 @@ def register_course_routes(app, mysql):
         elif is_session_expired(mysql):
             return redirect(url_for('auth.login', error='session_expired'))
         if session.get('role') != 'admin':
-            abort(403, description="Admin access required")
+            return redirect(url_for('home'))
 
         cur = mysql.connection.cursor()
         cur.execute("SELECT id, name FROM users WHERE role = 'educator' ORDER BY name")
@@ -150,10 +150,10 @@ def register_course_routes(app, mysql):
             try:
                 educator_id = int(educator_raw)
             except ValueError:
-                abort(400, "Invalid educator selected")
+                abort(400, "Access denied")
 
             if educator_id not in {e[0] for e in educators}:
-                abort(400, "Unknown educator")
+                abort(400, "Access denied")
             cur.execute(
                 "SELECT 1 FROM courses WHERE course_code = %s AND id != %s",
                 (code, course_id)
@@ -204,7 +204,7 @@ def register_course_routes(app, mysql):
         elif is_session_expired(mysql):
             return redirect(url_for('auth.login', error='session_expired'))
         if session.get('role') != 'admin':
-            abort(403, description="Admin access required")
+            return redirect(url_for('home'))
 
         cur = mysql.connection.cursor()
         cur.execute("SELECT 1 FROM courses WHERE id = %s", (course_id,))

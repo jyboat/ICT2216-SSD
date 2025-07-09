@@ -14,7 +14,7 @@ def register_user_routes(app, mysql, bcrypt):
             return redirect(url_for('auth.login', error='session_expired'))
 
         if session.get('role') != 'admin':
-            abort(403, description="Admin access required")
+            return redirect(url_for('home'))
         admin_id = get_current_user_id()
         cur = mysql.connection.cursor()
         cur.execute("SELECT name FROM users WHERE id = %s", (admin_id,))
@@ -74,7 +74,7 @@ def register_user_routes(app, mysql, bcrypt):
             return redirect(url_for('auth.login', error='session_expired'))
 
         if session.get('role') != 'admin':
-            abort(403, description="Admin access required")
+            return redirect(url_for('home'))
         user_id = get_current_user_id()
         cur = mysql.connection.cursor()
         cur.execute("SELECT name FROM users WHERE id = %s", (user_id,))
@@ -141,7 +141,7 @@ def register_user_routes(app, mysql, bcrypt):
             return redirect(url_for('auth.login', error='session_expired'))
 
         if session.get('role') != 'admin':
-            abort(403, description="Admin access required")
+            return redirect(url_for('home'))
         admin_id = get_current_user_id()
         cur = mysql.connection.cursor()
         cur.execute("SELECT name FROM users WHERE id = %s", (admin_id,))
@@ -216,7 +216,7 @@ def register_user_routes(app, mysql, bcrypt):
             return redirect(url_for('auth.login', error='session_expired'))
 
         if session.get('role') != 'admin':
-            abort(403, description="Admin access required")
+            return redirect(url_for('home'))
         cur = mysql.connection.cursor()
         cur.execute("SELECT 1 FROM users WHERE id = %s", (user_id,))
         if not cur.fetchone():
