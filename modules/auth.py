@@ -100,7 +100,7 @@ def register_auth_routes(app, mysql, bcrypt, serializer):
             # If no token was provided, return an error
             if not cf_turnstile_response:
                 suspicious_logger.warning(f"Login attempt without Cloudflare verification - IP: {ip}")
-                log_to_database("WARNING", 400, 'Unauthenticated', ip, "/login", "Login attempt without Cloudflare verification")
+                log_to_database(mysql,"WARNING", 400, 'Unauthenticated', ip, "/login", "Login attempt without Cloudflare verification")
                 return render_template("login.html", error="Please complete the security check", hide_header=True)
 
             # Verify the token with Cloudflare
