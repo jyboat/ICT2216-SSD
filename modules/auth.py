@@ -487,7 +487,7 @@ def register_auth_routes(app, mysql, bcrypt, serializer):
     def forget_password():
         errors = []
         email = ""
-        ip = request.remote_addr
+
         if request.method == "POST":
 
             #For rate limiting 
