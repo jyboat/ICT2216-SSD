@@ -19,7 +19,7 @@ def register_announcement_routes(app, mysql):
         result = cur.fetchone()
         if not result:
             cur.close()
-            abort(403, description="User not found")
+            abort(403, description="Access denied")
         role, user_name = result
 
         if request.method == "POST" and role == "educator":

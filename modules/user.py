@@ -14,7 +14,7 @@ def register_user_routes(app, mysql, bcrypt):
             return redirect(url_for('auth.login', error='session_expired'))
 
         if session.get('role') != 'admin':
-            abort(403, description="Admin access required")
+            return redirect(url_for('home'))
         admin_id = get_current_user_id()
         cur = mysql.connection.cursor()
         cur.execute("SELECT name FROM users WHERE id = %s", (admin_id,))
@@ -74,7 +74,7 @@ def register_user_routes(app, mysql, bcrypt):
             return redirect(url_for('auth.login', error='session_expired'))
 
         if session.get('role') != 'admin':
-            abort(403, description="Admin access required")
+            return redirect(url_for('home'))
         user_id = get_current_user_id()
         cur = mysql.connection.cursor()
         cur.execute("SELECT name FROM users WHERE id = %s", (user_id,))
@@ -89,23 +89,42 @@ def register_user_routes(app, mysql, bcrypt):
             role = request.form["role"]
             selected_codes = request.form.getlist("course_codes")
 
+            # Check if email already exists
+            cur.execute("SELECT id FROM users WHERE email = %s", (email,))
+            if cur.fetchone():
+                error = "Email already exists. Please choose a different email."
+                cur.close()
+                return render_template("user_form.html", action="Add", user_name=user_name,
+                                    course_codes=course_codes, assigned_codes=[], error=error)
+            
+            if len(password) < 8 or \
+                not re.search(r'[A-Z]', password) or \
+                not re.search(r'[a-z]', password) or \
+                not re.search(r'[0-9]', password) or \
+                not re.search(r'[!@#$%^&*(),.?":{}|<>]', password):
+                error = "Password must be at least 8 characters long and include an uppercase letter, a lowercase letter, a number, and a special character."
+                cur.close()
+                return render_template("user_form.html", action="Add", user_name=user_name,
+                                    course_codes=course_codes, assigned_codes=[], error=error)
+
             hashed_pw = bcrypt.generate_password_hash(password).decode('utf-8')
             cur.execute("""
                 INSERT INTO users (name, email, password_hash, role, totp_secret)
                 VALUES (%s, %s, %s, %s, %s)
             """, (name, email, hashed_pw, role, ""))
+
             mysql.connection.commit()
             new_user_id = cur.lastrowid
+
             for code in selected_codes:
                 cur.execute("""
                     INSERT INTO enrollments (user_id, course_id)
                     VALUES (
-                      %s,
-                      (SELECT id FROM courses WHERE course_code = %s)
+                    %s,
+                    (SELECT id FROM courses WHERE course_code = %s)
                     )
                 """, (new_user_id, code))
             mysql.connection.commit()
-
             cur.close()
 
             return redirect(url_for("user.manage_users"))
@@ -122,7 +141,7 @@ def register_user_routes(app, mysql, bcrypt):
             return redirect(url_for('auth.login', error='session_expired'))
 
         if session.get('role') != 'admin':
-            abort(403, description="Admin access required")
+            return redirect(url_for('home'))
         admin_id = get_current_user_id()
         cur = mysql.connection.cursor()
         cur.execute("SELECT name FROM users WHERE id = %s", (admin_id,))
@@ -197,7 +216,7 @@ def register_user_routes(app, mysql, bcrypt):
             return redirect(url_for('auth.login', error='session_expired'))
 
         if session.get('role') != 'admin':
-            abort(403, description="Admin access required")
+            return redirect(url_for('home'))
         cur = mysql.connection.cursor()
         cur.execute("SELECT 1 FROM users WHERE id = %s", (user_id,))
         if not cur.fetchone():

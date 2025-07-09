@@ -1,6 +1,5 @@
 from dotenv import load_dotenv
-from flask import Flask, redirect, render_template, request, session, url_for
-from flask_wtf import CSRFProtect
+from flask import Flask, redirect, render_template, request, session, url_for, abort, current_app
 import os
 from flask_mysqldb import MySQL
 from flask_bcrypt import Bcrypt
@@ -16,6 +15,11 @@ from modules.course import register_course_routes
 from modules.materials import register_material_routes
 from modules.user import register_user_routes
 from modules.auth import register_auth_routes
+import secrets
+
+
+
+
 
 load_dotenv()  # Load environment variables from .env
 
@@ -27,13 +31,12 @@ app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1)
 # bcrypt hashing
 app.secret_key = os.getenv("SECRET_KEY")
 bcrypt = Bcrypt(app)
-csrf = CSRFProtect(app)
 serializer = URLSafeTimedSerializer(app.secret_key)
 
 # cf key.
 cf_secret_key = os.getenv("CF_SECRET_KEY")
 
-app.config['SESSION_TYPE'] = 'redis' 
+
 app.config['SESSION_PERMANENT'] = False
 #app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(minutes=15) 
 app.permanent_session_lifetime = timedelta(minutes=15)  # Set session lifetime to 1 day
@@ -41,6 +44,30 @@ app.config['SESSION_COOKIE_SECURE'] = True  # Only send cookies over HTTPS
 app.config['SESSION_COOKIE_HTTPONLY'] = True  # Prevent JavaScript access
 app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'  # Controls cross-site requests
 
+def generate_csrf_token():
+    current = session.get("_csrf_current")
+    if not current:
+        token = secrets.token_urlsafe(32)
+        tokens = session.get('_csrf_tokens', [])
+        tokens.append(token)
+        if len(tokens) > 5:
+            tokens = tokens[-5:]
+        session['_csrf_tokens'] = tokens
+        session["_csrf_current"] = token
+        current = token
+    return current
+
+app.jinja_env.globals["csrf_token"] = generate_csrf_token
+
+def constant_time_compare(a: str, b: str) -> bool:
+    # Ensure comparison takes same time
+    if len(a) != len(b):
+        return False
+    result = 0
+    for x, y in zip(a, b):
+        # xor the code‐points and OR into result
+        result |= ord(x) ^ ord(y)
+    return result == 0
 
 @app.before_request
 def security_check():
@@ -85,7 +112,25 @@ def security_check():
     if is_session_expired(mysql):
         return redirect(url_for('auth.login', error='session_expired'))
 
+@app.before_request
+def csrf_protect():
+    if current_app.testing:
+        return
 
+    if request.method not in ("POST","PUT","PATCH","DELETE"):
+        return
+
+    submitted = request.form.get("csrf_token","") or request.headers.get("X-CSRF-Token","")
+    tokens = session.get("_csrf_tokens", [])
+
+    for idx, tok in enumerate(tokens):
+        if constant_time_compare(submitted, tok):
+            tokens.pop(idx)
+            session["_csrf_tokens"] = tokens
+            session.pop("_csrf_current", None)
+            return
+    abort(400, "CSRF token missing or incorrect")
+    
 @app.route("/")
 def index():
     if 'user_id' in session:

@@ -1,7 +1,7 @@
 from flask import render_template, request, session
 from modules.log import log_to_database
 from modules.session_utils import suspicious_logger
-
+from werkzeug.exceptions import RequestEntityTooLarge
 
 def register_error_handlers(app, mysql):
     @app.errorhandler(403)
@@ -33,3 +33,12 @@ def register_error_handlers(app, mysql):
         suspicious_logger.warning(f"{msg} - user_id: {user_id}, IP: {ip}, path: {path}")
         log_to_database(mysql, "WARNING", 400, user_id, ip, path, msg)
         return render_template("error.html", error=e), 400
+    @app.errorhandler(RequestEntityTooLarge)
+    def request_entity_too_large(e):
+        user_id = session.get('user_id', 'Unauthenticated')
+        ip = request.remote_addr
+        path = request.path
+        msg = "413 Request Entity Too Large"
+        suspicious_logger.warning(f"{msg} - user_id: {user_id}, IP: {ip}, path: {path}")
+        log_to_database(mysql, "WARNING", 413, user_id, ip, path, msg)
+        return render_template("error.html", error="Uploaded file is too large"), 413

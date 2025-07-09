@@ -1,7 +1,5 @@
 from flask import Blueprint, render_template, request, session, redirect, url_for, abort, flash
-from flask_wtf import FlaskForm
-from wtforms import StringField, SubmitField, PasswordField
-from wtforms.validators import DataRequired, Email, Length, EqualTo, Regexp
+import requests
 import re
 import time
 import pyotp
@@ -15,13 +13,19 @@ from modules.email_utils import send_reset_email_via_sendgrid
 from modules.log import *
 from collections import defaultdict
 import hashlib
+from flask import current_app
+from dotenv import load_dotenv
 
 auth_bp = Blueprint("auth", __name__)
 
+load_dotenv()  # Load environment variables from .env
+
 # key: IP, value: list of timestamps
 login_attempts = defaultdict(list)
+forget_attempts = defaultdict(list)
 BLOCK_THRESHOLD = 5
 BLOCK_WINDOW = 600  # seconds
+cf_secret_key = os.getenv("CF_SECRET_KEY")
 
 def generate_qr(secret, email):
     totp = pyotp.TOTP(secret)
@@ -32,31 +36,39 @@ def generate_qr(secret, email):
     return base64.b64encode(buf.getvalue()).decode('utf-8')
 
 
-class ForgetPasswordForm(FlaskForm):
-    email = StringField('Email', validators=[DataRequired(), Email()])
-    submit = SubmitField('Send Reset Link')
+# Regular expressions for email and password validation
+EMAIL_REGEX = re.compile(r"[^@]+@[^@]+\.[^@]+")
 
+def validate_email_field(email):
+    errors = []
+    if not email:
+        errors.append("Email is required.")
+    elif not EMAIL_REGEX.fullmatch(email):
+        errors.append("Invalid email address.")
+    return errors
 
-class ResetPasswordForm(FlaskForm):
-    password = PasswordField(
-        "New Password",
-        validators=[
-            DataRequired("Please enter a password"),
-            Length(min=8, message="Password must be at least 8 characters"),
-            Regexp(r'.*[A-Z].*', message="Must include at least one uppercase letter"),
-            Regexp(r'.*[a-z].*', message="Must include at least one lowercase letter"),
-            Regexp(r'.*[0-9].*', message="Must include at least one digit"),
-            Regexp(r'.*[!@#$%^&*(),.?":{}|<>].*',message="Must include at least one special character")
-        ]
-    )
-    confirm = PasswordField(
-        "Confirm Password",
-        validators=[
-            DataRequired("Please confirm your password"),
-            EqualTo("password", message="Passwords must match")
-        ]
-    )
-    submit = SubmitField("Reset Password")
+def validate_password_fields(pw, confirm_pw):
+    errors = []
+    if not pw:
+        errors.append("Please enter a password.")
+    else:
+        if len(pw) < 8:
+            errors.append("Password must be at least 8 characters.")
+        if not any(c.isupper() for c in pw):
+            errors.append("Must include at least one uppercase letter.")
+        if not any(c.islower() for c in pw):
+            errors.append("Must include at least one lowercase letter.")
+        if not any(c.isdigit() for c in pw):
+            errors.append("Must include at least one digit.")
+        
+        specials = '!@#$%^&*(),.?":{}|<>'
+        if not any(c in specials for c in pw):
+            errors.append("Must include at least one special character.")
+    if pw and not confirm_pw:
+        errors.append("Please confirm your password.")
+    elif pw and confirm_pw and pw != confirm_pw:
+        errors.append("Passwords must match.")
+    return errors
 
 
 def register_auth_routes(app, mysql, bcrypt, serializer):
@@ -73,40 +85,45 @@ def register_auth_routes(app, mysql, bcrypt, serializer):
             error_message = "Your session has expired. Please log in again."
 
         if request.method == 'POST':
-            ip = request.remote_addr
+            
             now = time.time()
 
-            # # Get the Cloudflare Turnstile token
-            # cf_turnstile_response = request.form.get('cf-turnstile-response')
+            # Skip Cloudflare check if running in test mode
+        if current_app.config.get("TESTING"):
+            pass  # Skip verification for unit tests
+        else:
+            ip = request.remote_addr
+            # Get the Cloudflare Turnstile token
+            cf_turnstile_response = request.form.get('cf-turnstile-response')
 
-            # # If no token was provided, return an error
-            # if not cf_turnstile_response:
-            #     suspicious_logger.warning(f"Login attempt without Cloudflare verification - IP: {ip}")
-            #     log_to_database("WARNING", 400, 'Unauthenticated', ip, "/login", "Login attempt without Cloudflare verification")
-            #     return render_template("login.html", error="Please complete the security check", hide_header=True)
+            # If no token was provided, return an error
+            if not cf_turnstile_response:
+                suspicious_logger.warning(f"Login attempt without Cloudflare verification - IP: {ip}")
+                log_to_database(mysql,"WARNING", 400, 'Unauthenticated', ip, "/login", "Login attempt without Cloudflare verification")
+                return render_template("login.html", error="Please complete the security check", hide_header=True)
 
-            # # Verify the token with Cloudflare
-            # verification_data = {
-            #     'secret': cf_secret_key,
-            #     'response': cf_turnstile_response,
-            #     'remoteip': ip
-            # }
-            # try:
-            #     verification_response = requests.post(
-            #         'https://challenges.cloudflare.com/turnstile/v0/siteverify',
-            #         data=verification_data
-            #     ).json()
+            # Verify the token with Cloudflare
+            verification_data = {
+                'secret': cf_secret_key,
+                'response': cf_turnstile_response,
+                'remoteip': ip
+            }
+            try:
+                verification_response = requests.post(
+                    'https://challenges.cloudflare.com/turnstile/v0/siteverify',
+                    data=verification_data
+                ).json()
 
-            #     # If verification failed, return an error
-            #     if not verification_response.get('success'):
-            #         suspicious_logger.warning(f"Failed Cloudflare verification - IP: {ip}")
-            #         log_to_database("WARNING", 400, 'Unauthenticated', ip, "/login", "Failed Cloudflare verification")
-            #         return render_template("login.html", error="Security check failed. Please try again.", hide_header=True)
-            # except Exception as e:
-            #     # Handle request exceptions
-            #     suspicious_logger.error(f"Cloudflare verification error: {str(e)} - IP: {ip}")
-            #     log_to_database("ERROR", 500, 'Unauthenticated', ip, "/login", f"Cloudflare verification error: {str(e)}")
-            #     return render_template("login.html", error="An error occurred during verification. Please try again.", hide_header=True)
+                # If verification failed, return an error
+                if not verification_response.get('success'):
+                    suspicious_logger.warning(f"Failed Cloudflare verification - IP: {ip}")
+                    log_to_database(mysql,"WARNING", 400, 'Unauthenticated', ip, "/login", "Failed Cloudflare verification")
+                    return render_template("login.html", error="Security check failed. Please try again.", hide_header=True)
+            except Exception as e:
+                # Handle request exceptions
+                suspicious_logger.error(f"Cloudflare verification error: {str(e)} - IP: {ip}")
+                log_to_database(mysql,"ERROR", 500, 'Unauthenticated', ip, "/login", f"Cloudflare verification error: {str(e)}")
+                return render_template("login.html", error="An error occurred during verification. Please try again.", hide_header=True)
 
             # Clean old attempts
             login_attempts[ip] = [t for t in login_attempts[ip] if now - t < BLOCK_WINDOW]
@@ -218,9 +235,49 @@ def register_auth_routes(app, mysql, bcrypt, serializer):
 
     @auth_bp.route('/register', methods=['GET', 'POST'])
     def register():
+        
         if is_logged_in(mysql):
             return redirect(url_for('home'))
         if request.method == 'POST':
+            
+            # Skip Cloudflare check if running in test mode
+            if current_app.config.get("TESTING"):
+                pass  # Skip verification for unit tests
+            else:
+                ip = request.remote_addr
+             # Get the Cloudflare Turnstile token
+                cf_turnstile_response = request.form.get('cf-turnstile-response')
+
+                # If no token was provided, return an error
+                if not cf_turnstile_response:
+                    suspicious_logger.warning(f"register attempt without Cloudflare verification - IP: {ip}")
+                    log_to_database(mysql,"WARNING", 400, 'Unauthenticated', ip, "/register", "Login attempt without Cloudflare verification")
+                    return render_template("register.html", error="Please complete the security check", hide_header=True)
+
+                # Verify the token with Cloudflare
+                verification_data = {
+                    'secret': cf_secret_key,
+                    'response': cf_turnstile_response,
+                    'remoteip': ip
+                }
+                try:
+                    verification_response = requests.post(
+                        'https://challenges.cloudflare.com/turnstile/v0/siteverify',
+                        data=verification_data
+                    ).json()
+
+                    # If verification failed, return an error
+                    if not verification_response.get('success'):
+                        suspicious_logger.warning(f"Failed Cloudflare verification - IP: {ip}")
+                        log_to_database(mysql,"WARNING", 400, 'Unauthenticated', ip, "/register", "Failed Cloudflare verification")
+                        return render_template("register.html", error="Security check failed. Please try again.", hide_header=True)
+                except Exception as e:
+                    # Handle request exceptions
+                    suspicious_logger.error(f"Cloudflare verification error: {str(e)} - IP: {ip}")
+                    log_to_database(mysql,"ERROR", 500, 'Unauthenticated', ip, "/register", f"Cloudflare verification error: {str(e)}")
+                    return render_template("register.html", error="An error occurred during verification. Please try again.", hide_header=True)
+            
+
             name = request.form['name'].strip()
             email = request.form['email'].strip().lower()
             password = request.form['password']
@@ -245,7 +302,7 @@ def register_auth_routes(app, mysql, bcrypt, serializer):
                     not re.search(r'[0-9]', password) or \
                     not re.search(r'[!@#$%^&*(),.?":{}|<>]', password):
                 return render_template("register.html",
-                                       error="Password must be at least 8 characters and include uppercase, lowercase, digit, and special character.",
+                                       error="Password must be at least 8 characters long and include an uppercase letter, a lowercase letter, a number, and a special character.",
                                        hide_header=True)
 
             # password hashing
@@ -378,11 +435,45 @@ def register_auth_routes(app, mysql, bcrypt, serializer):
     @auth_bp.route('/handle-login-warning', methods=['POST'])
     def handle_login_warning():
         print('WARNING SESSION:', dict(session))
+        
         action = request.form['action']
-        # email = request.form['email']
-        # password = request.form['password']
-        # remember_me = request.form.get('remember_me')
-        # pending = session.pop('pending_login', None)
+
+        if current_app.config.get("TESTING"):
+            pass
+        else:
+            ip = request.remote_addr
+            # Get the Cloudflare Turnstile token
+            cf_turnstile_response = request.form.get('cf-turnstile-response')
+
+            # If no token was provided, return an error
+            if not cf_turnstile_response:
+                suspicious_logger.warning(f"Login attempt without Cloudflare verification - IP: {ip}")
+                log_to_database(mysql,"WARNING", 400, 'Unauthenticated', ip, "/login_warning", "Login attempt without Cloudflare verification")
+                return render_template("login_warning.html", error="Please complete the security check", hide_header=True)
+
+            # Verify the token with Cloudflare
+            verification_data = {
+                'secret': cf_secret_key,
+                'response': cf_turnstile_response,
+                'remoteip': ip
+            }
+            try:
+                verification_response = requests.post(
+                    'https://challenges.cloudflare.com/turnstile/v0/siteverify',
+                    data=verification_data
+                ).json()
+
+                # If verification failed, return an error
+                if not verification_response.get('success'):
+                    suspicious_logger.warning(f"Failed Cloudflare verification - IP: {ip}")
+                    log_to_database(mysql,"WARNING", 400, 'Unauthenticated', ip, "/login_warning", "Failed Cloudflare verification")
+                    return render_template("login_warning.html", error="Security check failed. Please try again.", hide_header=True)
+            except Exception as e:
+                # Handle request exceptions
+                suspicious_logger.error(f"Cloudflare verification error: {str(e)} - IP: {ip}")
+                log_to_database(mysql,"ERROR", 500, 'Unauthenticated', ip, "/login_warning", f"Cloudflare verification error: {str(e)}")
+                return render_template("login_warning.html", error="An error occurred during verification. Please try again.", hide_header=True)
+
         pending = session.get('pending_login')
 
         if pending and action == "continue":
@@ -422,14 +513,70 @@ def register_auth_routes(app, mysql, bcrypt, serializer):
 
     @auth_bp.route("/forget-password", methods=["GET", "POST"])
     def forget_password():
-        form = ForgetPasswordForm()
-        if form.validate_on_submit():
-            email = form.email.data.strip().lower()
+        errors = []
+        email = ""
 
+        if request.method == "POST":
+
+            #For rate limiting 
+            ip  = request.remote_addr
+            now = time.time()
+
+            forget_attempts[ip] = [t for t in forget_attempts[ip] if now - t < BLOCK_WINDOW]
+
+            forget_attempts[ip].append(now)
+
+            if len(forget_attempts[ip]) > BLOCK_THRESHOLD:
+                flash("Too many password reset requests.","warning")
+                suspicious_logger.warning(f"Blocked login - too many attempts - IP: {ip}")
+                log_to_database(mysql, "WARNING", 429, 'Unauthenticated', ip, "/login",
+                                "Blocked forgot password - too many attempts")
+            
+                return render_template("forget_password.html",errors=errors,email=email)
+
+        
+            form = request.form
+            email = (form.get("email") or "").strip().lower()
+            cf_turnstile_response = request.form.get('cf-turnstile-response')
+        if current_app.config.get("TESTING"):
+            pass  
+
+        # If no token was provided, return an error
+        if not cf_turnstile_response:
+            suspicious_logger.warning(f"reset password attempt without Cloudflare verification - IP: {ip}")
+            log_to_database(mysql,"WARNING", 400, 'Unauthenticated', ip, "/reset_password", "Login attempt without Cloudflare verification")
+            return render_template("reset_password.html", error="Please complete the security check", hide_header=True)
+
+        # Verify the token with Cloudflare
+        verification_data = {
+            'secret': cf_secret_key,
+            'response': cf_turnstile_response,
+            'remoteip': ip
+        }
+        try:
+            verification_response = requests.post(
+                'https://challenges.cloudflare.com/turnstile/v0/siteverify',
+                data=verification_data
+            ).json()
+
+            # If verification failed, return an error
+            if not verification_response.get('success'):
+                suspicious_logger.warning(f"Failed Cloudflare verification - IP: {ip}")
+                log_to_database(mysql,"WARNING", 400, 'Unauthenticated', ip, "/forget_password", "Failed Cloudflare verification")
+                return render_template("forget_password.html", error="Security check failed. Please try again.", hide_header=True)
+        except Exception as e:
+            # Handle request exceptions
+            suspicious_logger.error(f"Cloudflare verification error: {str(e)} - IP: {ip}")
+            log_to_database(mysql,"ERROR", 500, 'Unauthenticated', ip, "/forget_password", f"Cloudflare verification error: {str(e)}")
+            return render_template("forget_password.html", error="An error occurred during verification. Please try again.", hide_header=True)
+        
+        errors = validate_email_field(email)
+
+        if not errors:
             with mysql.connection.cursor() as cur:
                 cur.execute("SELECT role FROM users WHERE email = %s",(email,))
                 row = cur.fetchone()
-            
+        
                 if not row or row[0].lower() == "admin":
                     return render_template("forget_password_sent.html")
 
@@ -437,19 +584,20 @@ def register_auth_routes(app, mysql, bcrypt, serializer):
                 token_hash = hashlib.sha256(token.encode("utf-8")).hexdigest()
                 cur.execute(
                     "UPDATE users SET password_token = %s WHERE email = %s",
-                    (token_hash, email)
+                (token_hash, email)
                 )
-                mysql.connection.commit()
-            
+            mysql.connection.commit()
+        
             reset_url = url_for("auth.reset_password", token=token, _external=True)
             send_reset_email_via_sendgrid(email, reset_url)
 
-            return render_template("forget_password_sent.html")
+            return render_template("forget_password_sent.html", hide_header=True)
 
-        return render_template("forget_password.html", form=form)
+        return render_template("forget_password.html",errors=errors,email=email, hide_header=True)
 
     @auth_bp.route("/reset/<token>", methods=["GET", "POST"])
     def reset_password(token):
+        error = request.args.get('error')  
         try:
             email = serializer.loads(
                 token,
@@ -457,9 +605,11 @@ def register_auth_routes(app, mysql, bcrypt, serializer):
                 max_age=300
             )
         except SignatureExpired:
-            return redirect(url_for("auth.forget_password", error="Link Expired"))
+            flash("This reset link has expired.", "danger")
+            return redirect(url_for("auth.forget_password"))
         except BadSignature:
-            return redirect(url_for("auth.forget_password", error="Invalid Link"))
+            flash("This reset link is invalid.", "danger")
+            return redirect(url_for("auth.forget_password"))
         
         token_hash = hashlib.sha256(token.encode("utf-8")).hexdigest()
         with mysql.connection.cursor() as cur:
@@ -470,30 +620,36 @@ def register_auth_routes(app, mysql, bcrypt, serializer):
             row = cur.fetchone()
 
         if not row:
-            flash("This reset link is invalid or has expired.", "danger")
+            flash("Invalid or expired token", "danger")
             return redirect(url_for("auth.forget_password"))
 
         user_id = row[0]
 
-        form = ResetPasswordForm()
-        if form.validate_on_submit():
-            new_pw_hash = bcrypt.generate_password_hash(form.password.data).decode("utf-8")
-            with mysql.connection.cursor() as cur:
-                cur.execute(
+        errors = []
+        if request.method == "POST":
+            form = request.form
+            pw = form.get("password", "")
+            confirm_pw = form.get("confirm", "")
+            errors = validate_password_fields(pw, confirm_pw)
+        
+            if not errors:
+                new_pw_hash = bcrypt.generate_password_hash(pw).decode("utf-8")
+                with mysql.connection.cursor() as cur:
+                    cur.execute(
                     """
                     UPDATE users
-                    SET password_hash        = %s,
+                    SET password_hash = %s,
                     password_token = NULL
                     WHERE id = %s
                     """,
-                (new_pw_hash, user_id)
-                )
+                    (new_pw_hash, user_id)
+                    )
                 mysql.connection.commit()
 
-            session.clear()
+                session.clear()
+                flash("Your password has been reset. Please log in with your new password.", "success")
+                return redirect(url_for("auth.login",hide_header=True))
 
-            return redirect(url_for("auth.login",success="Your password has been reset. Please login with your new password."))
-
-        return render_template("reset_password.html", form=form)
+        return render_template("reset_password.html",hide_header=True)
 
     app.register_blueprint(auth_bp)

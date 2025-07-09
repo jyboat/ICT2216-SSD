@@ -100,7 +100,7 @@ def register_forum_routes(app, mysql):
         result = cur.fetchone()
         if not result:
             cur.close()
-            abort(404, description="Post not found")
+            abort(404, description="Access denied")
 
         author_id, content, thread_id = result
 
@@ -112,7 +112,7 @@ def register_forum_routes(app, mysql):
         tc = cur.fetchone()
         if not tc or tc[0] != course_id:
             cur.close()
-            abort(404, "That post isn’t in this course’s forum")
+            abort(404, "Access denied")
 
         if author_id != user_id:
             cur.execute("""
@@ -137,7 +137,7 @@ def register_forum_routes(app, mysql):
             cur.close()
 
             if not course_result:
-                abort(404, description="Course not found")
+                abort(404, description="Access denied")
 
             course_id = course_result[0]
             return redirect(url_for("forum.course_forum", course_id=course_id))
@@ -154,26 +154,26 @@ def register_forum_routes(app, mysql):
 
         user_id = get_current_user_id()
         cur = mysql.connection.cursor()
-        cur.execute("SELECT author_id, thread_id FROM forum_posts WHERE id = %s", (post_id,))
-        result = cur.fetchone()
-        if not result:
+        
+        cur.execute("""
+            SELECT t.course_id, c.educator_id
+            FROM forum_posts   AS p
+            JOIN forum_threads AS t ON p.thread_id = t.id
+            JOIN courses       AS c ON t.course_id = c.id
+            WHERE p.id = %s
+            """, (post_id,))
+        results = cur.fetchone()
+        if not results:
             cur.close()
-            abort(404, description="Post not found")
+            abort(404, description="Access denied")
+        course_id, educator_id = results
 
-        author_id, thread_id = result
-
-        if user_id != author_id and not is_educator(mysql, user_id):
+  
+        if user_id != educator_id:
             cur.close()
-            return redirect(url_for('home'))
+            abort(403, description="Access denied")
 
-        cur.execute("SELECT course_id FROM forum_threads WHERE id = %s", (thread_id,))
-        course_result = cur.fetchone()
-
-        if not course_result:
-            cur.close()
-            abort(404, description="Course not found")
-
-        course_id = course_result[0]
+    
         cur.execute("DELETE FROM forum_posts WHERE id = %s", (post_id,))
         mysql.connection.commit()
         cur.close()
