@@ -42,10 +42,13 @@ app.config['SESSION_COOKIE_HTTPONLY'] = True  # Prevent JavaScript access
 app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'  # Controls cross-site requests
 
 def generate_csrf_token():
-    if "_csrf_token" not in session:
-        session['_csrf_token'] = secrets.token_urlsafe(32)
-
-    return session['_csrf_token']
+    token = secrets.token_urlsafe(32)
+    tokens = session.get('_csrf_tokens', [])
+    tokens.append(token)
+    if len(tokens) > 5:
+        tokens = tokens[-5:]
+    session['_csrf_tokens'] = tokens
+    return token
 
 app.jinja_env.globals["csrf_token"] = generate_csrf_token
 
@@ -114,11 +117,20 @@ def csrf_protect():
         return
 
     submitted = request.form.get("csrf_token","") or request.headers.get("X-CSRF-Token","")
-    expected  = generate_csrf_token()
+    tokens = session.get("_csrf_tokens", [])
 
-    if not submitted or not constant_time_compare(submitted, expected):
+    match_index = None
+    for idx, tok in enumerate(tokens):
+        if constant_time_compare(submitted, tok):
+            match_index = idx
+            break
+
+    if match_index is None:
         abort(400, "CSRF token missing or incorrect")
 
+    tokens.pop(match_index)
+    session["_csrf_tokens"] = tokens
+    
 @app.route("/")
 def index():
     if 'user_id' in session:
