@@ -30,7 +30,7 @@
 
             <div class="mb-3">
                 <label class="form-label">Role</label>
-                <select class="form-select" name="role" required>
+                <select class="form-select" name="role">
                     {% for r in ['student', 'educator', 'admin'] %}
                     <option value="{{ r }}" {% if user and user[2]==r %}selected{% endif %}>{{ r.title() }}</option>
                     {% endfor %}
