@@ -40,9 +40,27 @@ app.config['SESSION_COOKIE_HTTPONLY'] = True  # Prevent JavaScript access
 app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'  # Controls cross-site requests
 
 def generate_csrf_token():
+    # 1) if we haven't already, create a random CSRF secret in the session
     if "_csrf_token" not in session:
         session["_csrf_token"] = os.urandom(16).hex()
-    return session["_csrf_token"]
+
+    # 2) grab that per-session CSRF secret
+    csrf_secret = session["_csrf_token"]
+
+    # 3) bind it to this URL path so tokens can't be replayed on other endpoints
+    path = request.path or ""
+
+    # 4) build one string
+    data = f"{current_app.secret_key}|{csrf_secret}|{path}"
+
+    # 5) djb2-style rolling hash (pure Python, no external libs)
+    checksum = 5381
+    for ch in data:
+        checksum = ((checksum << 5) + checksum) + ord(ch)
+        checksum &= 0xFFFFFFFF
+
+    # 6) return as fixed-width hex
+    return f"{checksum:08x}"
 
 app.jinja_env.globals["csrf_token"] = generate_csrf_token
 
@@ -106,14 +124,15 @@ def security_check():
 def csrf_protect():
     if current_app.testing:
         return
-    if request.method in ("POST", "PUT", "PATCH", "DELETE"):
-        token_in_session = session.get("_csrf_token")
-        token_in_form    = request.form.get("_csrf_token", "")
-        token_in_header  = request.headers.get("X-CSRF-Token", "")
-        token_submitted  = token_in_form or token_in_header
 
-        if not token_in_session or not token_submitted or not constant_time_compare(token_in_session, token_submitted):
-            abort(400, "CSRF token missing or incorrect")
+    if request.method not in ("POST","PUT","PATCH","DELETE"):
+        return
+
+    submitted = request.form.get("_csrf_token","") or request.headers.get("X-CSRF-Token","")
+    expected  = generate_csrf_token()
+
+    if not submitted or not constant_time_compare(submitted, expected):
+        abort(400, "CSRF token missing or incorrect")
 
 @app.route("/")
 def index():
