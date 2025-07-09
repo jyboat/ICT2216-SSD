@@ -20,6 +20,7 @@ auth_bp = Blueprint("auth", __name__)
 
 # key: IP, value: list of timestamps
 login_attempts = defaultdict(list)
+forget_attempts = defaultdict(list)
 BLOCK_THRESHOLD = 5
 BLOCK_WINDOW = 600  # seconds
 
@@ -436,6 +437,24 @@ def register_auth_routes(app, mysql, bcrypt, serializer):
         errors = []
         email = ""
         if request.method == "POST":
+
+            #For rate limiting 
+            ip  = request.remote_addr
+            now = time.time()
+
+            forget_attempts[ip] = [t for t in forget_attempts[ip] if now - t < BLOCK_WINDOW]
+
+            forget_attempts[ip].append(now)
+
+            if len(forget_attempts[ip]) > BLOCK_THRESHOLD:
+                flash("Too many password reset requests.","warning")
+                suspicious_logger.warning(f"Blocked login - too many attempts - IP: {ip}")
+                log_to_database(mysql, "WARNING", 429, 'Unauthenticated', ip, "/login",
+                                "Blocked forgot password - too many attempts")
+            
+                return render_template("forget_password.html",errors=errors,email=email)
+
+        
             form = request.form
             email = (form.get("email") or "").strip().lower()
             errors = validate_email_field(email)
@@ -488,8 +507,8 @@ def register_auth_routes(app, mysql, bcrypt, serializer):
             row = cur.fetchone()
 
         if not row:
-            error = "Invalid or expired token"
-            return redirect(url_for("auth.forget_password",error=error))
+            flash("Invalid or expired token", "danger")
+            return redirect(url_for("auth.forget_password"))
 
         user_id = row[0]
 
@@ -518,6 +537,6 @@ def register_auth_routes(app, mysql, bcrypt, serializer):
                 flash("Your password has been reset. Please log in with your new password.", "success")
                 return redirect(url_for("auth.login",hide_header=True))
 
-        return render_template("reset_password.html", errors=errors, hide_header=True)
+        return render_template("reset_password.html",hide_header=True)
 
     app.register_blueprint(auth_bp)
