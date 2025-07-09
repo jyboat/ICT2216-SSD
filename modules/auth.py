@@ -432,9 +432,11 @@ def register_auth_routes(app, mysql, bcrypt, serializer):
                 max_age=300
             )
         except SignatureExpired:
-            return redirect(url_for("auth.forget_password", error="Link Expired"))
+            error="Link Expired"
+            return redirect(url_for("auth.forget_password", error=error))
         except BadSignature:
-            return redirect(url_for("auth.forget_password", error="Invalid Link"))
+            error="Invalid Link"
+            return redirect(url_for("auth.forget_password", error=error))
         
         token_hash = hashlib.sha256(token.encode("utf-8")).hexdigest()
         with mysql.connection.cursor() as cur:
@@ -445,8 +447,8 @@ def register_auth_routes(app, mysql, bcrypt, serializer):
             row = cur.fetchone()
 
         if not row:
-            flash("This reset link is invalid or has expired.", "danger")
-            return redirect(url_for("auth.forget_password"))
+            error = "Invalid or expired token"
+            return redirect(url_for("auth.forget_password",error=error))
 
         user_id = row[0]
 
