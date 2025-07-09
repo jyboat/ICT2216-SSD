@@ -8,6 +8,7 @@ qrcode
 Pillow
 requests
 pytest
+flask-wtf
 wtforms
 itsdangerous
 email-validator

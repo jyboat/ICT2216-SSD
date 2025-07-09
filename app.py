@@ -1,6 +1,5 @@
 from dotenv import load_dotenv
 from flask import Flask, redirect, render_template, request, session, url_for, abort
-import hmac
 import os
 from flask_mysqldb import MySQL
 from flask_bcrypt import Bcrypt
@@ -47,6 +46,18 @@ def generate_csrf_token():
 
 app.jinja_env.globals["csrf_token"] = generate_csrf_token
 
+def constant_time_compare(a: str, b: str) -> bool:
+    """
+    Return True if a and b are exactly equal, False otherwise.
+    Always takes the same amount of time for any inputs of the same length.
+    """
+    if len(a) != len(b):
+        return False
+    result = 0
+    for x, y in zip(a, b):
+        # xor the code‐points and OR into result
+        result |= ord(x) ^ ord(y)
+    return result == 0
 
 @app.before_request
 def security_check():
@@ -99,9 +110,7 @@ def csrf_protect():
         token_in_header  = request.headers.get("X-CSRF-Token", "")
         token_submitted  = token_in_form or token_in_header
 
-        if not token_in_session \
-           or not token_submitted \
-           or not hmac.compare_digest(token_in_session, token_submitted):
+        if not token_in_session or not token_submitted or not constant_time_compare(token_in_session, token_submitted):
             abort(400, "CSRF token missing or incorrect")
 
 @app.route("/")
