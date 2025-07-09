@@ -45,13 +45,17 @@ app.config['SESSION_COOKIE_HTTPONLY'] = True  # Prevent JavaScript access
 app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'  # Controls cross-site requests
 
 def generate_csrf_token():
-    token = secrets.token_urlsafe(32)
-    tokens = session.get('_csrf_tokens', [])
-    tokens.append(token)
-    if len(tokens) > 5:
-        tokens = tokens[-5:]
-    session['_csrf_tokens'] = tokens
-    return token
+    current = session.get("_csrf_current")
+    if not current:
+        token = secrets.token_urlsafe(32)
+        tokens = session.get('_csrf_tokens', [])
+        tokens.append(token)
+        if len(tokens) > 5:
+            tokens = tokens[-5:]
+        session['_csrf_tokens'] = tokens
+        session["_csrf_current"] = token
+        current = token
+    return current
 
 app.jinja_env.globals["csrf_token"] = generate_csrf_token
 
@@ -119,21 +123,17 @@ def csrf_protect():
     submitted = request.form.get("csrf_token","") or request.headers.get("X-CSRF-Token","")
     tokens = session.get("_csrf_tokens", [])
 
-    logger.debug("→ CSRF: submitted=%r", submitted)
-    logger.debug("→ CSRF: session tokens=%r", tokens)
+    logger.warning("→ CSRF: submitted=%r", submitted)
+    logger.warning("→ CSRF: session tokens=%r", tokens)
 
-    match_index = None
+    
     for idx, tok in enumerate(tokens):
         if constant_time_compare(submitted, tok):
-            match_index = idx
-            break
-
-    if match_index is None:
-        logger.warning("CSRF FAIL: %r not found in %r", submitted, tokens)
-        abort(400, "CSRF token missing or incorrect")
-
-    tokens.pop(match_index)
-    session["_csrf_tokens"] = tokens
+            tokens.pop(idx)
+            session["_csrf_tokens"] = tokens
+            session.pop("_csrf_current", None)
+            return
+    abort(400, "CSRF token missing or incorrect")
     
 @app.route("/")
 def index():
