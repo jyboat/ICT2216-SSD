@@ -130,7 +130,7 @@ def csrf_protect():
     if request.method not in ("POST","PUT","PATCH","DELETE"):
         return
 
-    submitted = request.form.get("_csrf_token","") or request.headers.get("X-CSRF-Token","")
+    submitted = request.form.get("csrf_token","") or request.headers.get("X-CSRF-Token","")
     expected  = generate_csrf_token()
 
     if not submitted or not constant_time_compare(submitted, expected):
