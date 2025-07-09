@@ -195,14 +195,14 @@ def register_material_routes(app, mysql):
 
             # 🔐 Check file signature (magic number)
             if not file_data.startswith(b'%PDF-'):
-                abort(400, description="Access denied")
+                abort(400, description="Invalid file type. Only genuine PDF files are allowed.")
 
             # limit size
             if len(file_data) > 10 * 1024 * 1024:  # 10 MB limit
                 abort(400, description="Access denied")
 
             if not filename.lower().endswith(".pdf") or mime_type != "application/pdf":
-                abort(400, description="Access denied")
+                abort(400, description="Only PDF files are allowed")
 
             title = request.form["title"]
             description = request.form["description"]
