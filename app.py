@@ -15,6 +15,8 @@ from modules.course import register_course_routes
 from modules.materials import register_material_routes
 from modules.user import register_user_routes
 from modules.auth import register_auth_routes
+import logging
+log = logging.getLogger("csrf")
 
 load_dotenv()  # Load environment variables from .env
 
@@ -132,6 +134,8 @@ def csrf_protect():
     expected  = generate_csrf_token()
 
     if not submitted or not constant_time_compare(submitted, expected):
+        log.warning(f"CSRF FAIL: path(GET)={request.referrer} path(POST)={request.path}")
+        log.warning(f"   submitted={submitted!r} expected={expected!r}")
         abort(400, "CSRF token missing or incorrect")
 
 @app.route("/")
