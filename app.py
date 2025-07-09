@@ -16,6 +16,9 @@ from modules.materials import register_material_routes
 from modules.user import register_user_routes
 from modules.auth import register_auth_routes
 import secrets
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 load_dotenv()  # Load environment variables from .env
@@ -116,6 +119,9 @@ def csrf_protect():
     submitted = request.form.get("csrf_token","") or request.headers.get("X-CSRF-Token","")
     tokens = session.get("_csrf_tokens", [])
 
+    logger.debug("→ CSRF: submitted=%r", submitted)
+    logger.debug("→ CSRF: session tokens=%r", tokens)
+
     match_index = None
     for idx, tok in enumerate(tokens):
         if constant_time_compare(submitted, tok):
@@ -123,6 +129,7 @@ def csrf_protect():
             break
 
     if match_index is None:
+        logger.warning("CSRF FAIL: %r not found in %r", submitted, tokens)
         abort(400, "CSRF token missing or incorrect")
 
     tokens.pop(match_index)
