@@ -96,6 +96,16 @@ def register_user_routes(app, mysql, bcrypt):
                 cur.close()
                 return render_template("user_form.html", action="Add", user_name=user_name,
                                     course_codes=course_codes, assigned_codes=[], error=error)
+            
+            if len(password) < 8 or \
+                not re.search(r'[A-Z]', password) or \
+                not re.search(r'[a-z]', password) or \
+                not re.search(r'[0-9]', password) or \
+                not re.search(r'[!@#$%^&*(),.?":{}|<>]', password):
+                error = "Password must be at least 8 characters and include uppercase, lowercase, digit, and special character."
+                cur.close()
+                return render_template("user_form.html", action="Add", user_name=user_name,
+                                    course_codes=course_codes, assigned_codes=[], error=error)
 
             hashed_pw = bcrypt.generate_password_hash(password).decode('utf-8')
             cur.execute("""
