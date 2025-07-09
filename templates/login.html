@@ -10,6 +10,16 @@
             <h1 class="h4 fw-bold" style="color: #403c70;">StudyNest</h1>
         </div>
 
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, msg in messages %}
+                    <div class="alert alert-{{ category }}" role="alert">
+                        {{ msg }}
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
         {% if success %}
         <div class="alert alert-success text-center" role="alert">
             Account created successfully! You may now log in.
