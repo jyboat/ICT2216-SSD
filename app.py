@@ -50,10 +50,10 @@ def generate_csrf_token():
     csrf_secret = session["_csrf_token"]
 
     
-    rule = getattr(request.url_rule, "rule", "")
+  
 
     # 4) build one string
-    data = f"{current_app.secret_key}|{csrf_secret}|{rule}"
+    data = f"{current_app.secret_key}|{csrf_secret}"
 
     # 5) djb2-style rolling hash (pure Python, no external libs)
     checksum = 5381
@@ -134,7 +134,7 @@ def csrf_protect():
     expected  = generate_csrf_token()
 
     if not submitted or not constant_time_compare(submitted, expected):
-        log.warning(f"CSRF FAIL: path(GET)={request.referrer} path(POST)={request.path}")
+        
         log.warning(f"   submitted={submitted!r} expected={expected!r}")
         abort(400, "CSRF token missing or incorrect")
 
