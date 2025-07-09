@@ -421,7 +421,7 @@ def register_auth_routes(app, mysql, bcrypt, serializer):
 
             return render_template("forget_password_sent.html")
 
-        return render_template("forget_password.html", form=form)
+        return render_template("forget_password.html", form=form, hide_header = True)
 
     @auth_bp.route("/reset/<token>", methods=["GET", "POST"])
     def reset_password(token):

@@ -49,11 +49,11 @@ def generate_csrf_token():
     # 2) grab that per-session CSRF secret
     csrf_secret = session["_csrf_token"]
 
-    # 3) bind it to this URL path so tokens can't be replayed on other endpoints
-    path = request.path or ""
+    
+    rule = getattr(request.url_rule, "rule", "")
 
     # 4) build one string
-    data = f"{current_app.secret_key}|{csrf_secret}|{path}"
+    data = f"{current_app.secret_key}|{csrf_secret}|{rule}"
 
     # 5) djb2-style rolling hash (pure Python, no external libs)
     checksum = 5381
