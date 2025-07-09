@@ -32,7 +32,7 @@ def generate_qr(secret, email):
     qr_img.save(buf, format='PNG')
     return base64.b64encode(buf.getvalue()).decode('utf-8')
 
-
+''' Old forms
 class ForgetPasswordForm(FlaskForm):
     email = StringField('Email', validators=[DataRequired(), Email()])
     submit = SubmitField('Send Reset Link')
@@ -57,7 +57,43 @@ class ResetPasswordForm(FlaskForm):
             EqualTo("password", message="Passwords must match")
         ]
     )
-    submit = SubmitField("Reset Password")
+    submit = SubmitField("Reset Password") '''
+
+# Regular expressions for email and password validation
+EMAIL_REGEX = re.compile(r"[^@]+@[^@]+\.[^@]+")
+PWD_UPPER = re.compile(r".*[A-Z].*")
+PWD_LOWER = re.compile(r".*[a-z].*")
+PWD_DIGIT = re.compile(r".*[0-9].*")
+PWD_SPECIAL = re.compile(r'.*[!@#$%^&*(),.?":{}|<>].*')
+
+def validate_email_field(email):
+    errors = []
+    if not email:
+        errors.append("Email is required.")
+    elif not EMAIL_REGEX.fullmatch(email):
+        errors.append("Invalid email address.")
+    return errors
+
+def validate_password_fields(pw, confirm_pw):
+    errors = []
+    if not pw:
+        errors.append("Please enter a password.")
+    else:
+        if len(pw) < 8:
+            errors.append("Password must be at least 8 characters.")
+        if not PWD_UPPER.search(pw):
+            errors.append("Must include at least one uppercase letter.")
+        if not PWD_LOWER.search(pw):
+            errors.append("Must include at least one lowercase letter.")
+        if not PWD_DIGIT.search(pw):
+            errors.append("Must include at least one digit.")
+        if not PWD_SPECIAL.search(pw):
+            errors.append("Must include at least one special character.")
+    if pw and not confirm_pw:
+        errors.append("Please confirm your password.")
+    elif pw and confirm_pw and pw != confirm_pw:
+        errors.append("Passwords must match.")
+    return errors
 
 
 def register_auth_routes(app, mysql, bcrypt, serializer):
@@ -397,13 +433,17 @@ def register_auth_routes(app, mysql, bcrypt, serializer):
 
     @auth_bp.route("/forget-password", methods=["GET", "POST"])
     def forget_password():
-        form = ForgetPasswordForm()
-        if form.validate_on_submit():
-            email = form.email.data.strip().lower()
+        errors = []
+        email = ""
+        if request.method == "POST":
+            form = request.form
+            email = (form.get("email") or "").strip().lower()
+            errors = validate_email_field(email)
 
-            with mysql.connection.cursor() as cur:
-                cur.execute("SELECT role FROM users WHERE email = %s",(email,))
-                row = cur.fetchone()
+            if not errors:
+                with mysql.connection.cursor() as cur:
+                    cur.execute("SELECT role FROM users WHERE email = %s",(email,))
+                    row = cur.fetchone()
             
                 if not row or row[0].lower() == "admin":
                     return render_template("forget_password_sent.html")
@@ -421,7 +461,7 @@ def register_auth_routes(app, mysql, bcrypt, serializer):
 
             return render_template("forget_password_sent.html")
 
-        return render_template("forget_password.html", form=form, hide_header = True)
+        return render_template("forget_password.html",errors=errors,email=email)
 
     @auth_bp.route("/reset/<token>", methods=["GET", "POST"])
     def reset_password(token):
@@ -453,8 +493,14 @@ def register_auth_routes(app, mysql, bcrypt, serializer):
 
         user_id = row[0]
 
-        form = ResetPasswordForm()
-        if form.validate_on_submit():
+        errors = []
+        if request.method == "POST":
+            form = request.form
+            pw = form.get("password", "")
+            confirm_pw = form.get("confirm", "")
+            errors = validate_password_fields(pw, confirm_pw)
+        
+        if not errors:
             new_pw_hash = bcrypt.generate_password_hash(form.password.data).decode("utf-8")
             with mysql.connection.cursor() as cur:
                 cur.execute(
@@ -472,6 +518,6 @@ def register_auth_routes(app, mysql, bcrypt, serializer):
 
             return redirect(url_for("auth.login",success="Your password has been reset. Please login with your new password."))
 
-        return render_template("reset_password.html", form=form)
+        return render_template("reset_password.html", errors=errors)
 
     app.register_blueprint(auth_bp)
