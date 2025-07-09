@@ -1,6 +1,6 @@
 from dotenv import load_dotenv
-from flask import Flask, redirect, render_template, request, session, url_for
-from flask_wtf import CSRFProtect
+from flask import Flask, redirect, render_template, request, session, url_for, abort
+import hmac
 import os
 from flask_mysqldb import MySQL
 from flask_bcrypt import Bcrypt
@@ -27,7 +27,6 @@ app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1)
 # bcrypt hashing
 app.secret_key = os.getenv("SECRET_KEY")
 bcrypt = Bcrypt(app)
-csrf = CSRFProtect(app)
 serializer = URLSafeTimedSerializer(app.secret_key)
 
 # cf key.
@@ -40,6 +39,13 @@ app.permanent_session_lifetime = timedelta(minutes=15)  # Set session lifetime t
 app.config['SESSION_COOKIE_SECURE'] = True  # Only send cookies over HTTPS
 app.config['SESSION_COOKIE_HTTPONLY'] = True  # Prevent JavaScript access
 app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'  # Controls cross-site requests
+
+def generate_csrf_token():
+    if "_csrf_token" not in session:
+        session["_csrf_token"] = os.urandom(16).hex()
+    return session["_csrf_token"]
+
+app.jinja_env.globals["csrf_token"] = generate_csrf_token
 
 
 @app.before_request
@@ -85,6 +91,18 @@ def security_check():
     if is_session_expired(mysql):
         return redirect(url_for('auth.login', error='session_expired'))
 
+@app.before_request
+def csrf_protect():
+    if request.method in ("POST", "PUT", "PATCH", "DELETE"):
+        token_in_session = session.get("_csrf_token")
+        token_in_form    = request.form.get("_csrf_token", "")
+        token_in_header  = request.headers.get("X-CSRF-Token", "")
+        token_submitted  = token_in_form or token_in_header
+
+        if not token_in_session \
+           or not token_submitted \
+           or not hmac.compare_digest(token_in_session, token_submitted):
+            abort(400, "CSRF token missing or incorrect")
 
 @app.route("/")
 def index():
