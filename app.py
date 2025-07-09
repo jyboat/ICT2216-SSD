@@ -134,8 +134,6 @@ def csrf_protect():
     expected  = generate_csrf_token()
 
     if not submitted or not constant_time_compare(submitted, expected):
-        
-        log.warning(f"   submitted={submitted!r} expected={expected!r}")
         abort(400, "CSRF token missing or incorrect")
 
 @app.route("/")
