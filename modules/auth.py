@@ -86,13 +86,14 @@ def register_auth_routes(app, mysql, bcrypt, serializer):
             error_message = "Your session has expired. Please log in again."
 
         if request.method == 'POST':
-            ip = request.remote_addr
+            
             now = time.time()
 
             # Skip Cloudflare check if running in test mode
         if current_app.config.get("TESTING"):
             pass  # Skip verification for unit tests
         else:
+            ip = request.remote_addr
             # Get the Cloudflare Turnstile token
             cf_turnstile_response = request.form.get('cf-turnstile-response')
 
@@ -213,11 +214,12 @@ def register_auth_routes(app, mysql, bcrypt, serializer):
         if is_logged_in(mysql):
             return redirect(url_for('home'))
         if request.method == 'POST':
-            ip = request.remote_addr
+            
             # Skip Cloudflare check if running in test mode
             if current_app.config.get("TESTING"):
                 pass  # Skip verification for unit tests
             else:
+                ip = request.remote_addr
              # Get the Cloudflare Turnstile token
                 cf_turnstile_response = request.form.get('cf-turnstile-response')
 
@@ -408,12 +410,13 @@ def register_auth_routes(app, mysql, bcrypt, serializer):
     @auth_bp.route('/handle-login-warning', methods=['POST'])
     def handle_login_warning():
         print('WARNING SESSION:', dict(session))
-        ip = request.remote_addr
+        
         action = request.form['action']
 
         if current_app.config.get("TESTING"):
             pass
         else:
+            ip = request.remote_addr
             # Get the Cloudflare Turnstile token
             cf_turnstile_response = request.form.get('cf-turnstile-response')
 
