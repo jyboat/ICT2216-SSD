@@ -15,8 +15,8 @@ from modules.course import register_course_routes
 from modules.materials import register_material_routes
 from modules.user import register_user_routes
 from modules.auth import register_auth_routes
-import logging
-log = logging.getLogger("csrf")
+import secrets
+
 
 load_dotenv()  # Load environment variables from .env
 
@@ -42,27 +42,10 @@ app.config['SESSION_COOKIE_HTTPONLY'] = True  # Prevent JavaScript access
 app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'  # Controls cross-site requests
 
 def generate_csrf_token():
-    # 1) if we haven't already, create a random CSRF secret in the session
     if "_csrf_token" not in session:
-        session["_csrf_token"] = os.urandom(16).hex()
+        session['_csrf_token'] = secrets.token_urlsafe(32)
 
-    # 2) grab that per-session CSRF secret
-    csrf_secret = session["_csrf_token"]
-
-    
-  
-
-    # 4) build one string
-    data = f"{current_app.secret_key}|{csrf_secret}"
-
-    # 5) djb2-style rolling hash (pure Python, no external libs)
-    checksum = 5381
-    for ch in data:
-        checksum = ((checksum << 5) + checksum) + ord(ch)
-        checksum &= 0xFFFFFFFF
-
-    # 6) return as fixed-width hex
-    return f"{checksum:08x}"
+    return session['_csrf_token']
 
 app.jinja_env.globals["csrf_token"] = generate_csrf_token
 
