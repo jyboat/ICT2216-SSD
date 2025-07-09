@@ -66,9 +66,15 @@ def register_material_routes(app, mysql):
 
         # Fetch existing data
         cur.execute("""
-            SELECT course_id, title, description, file_name, mime_type
-            FROM materials
-            WHERE id = %s AND uploader_id = %s
+        SELECT m.course_id,
+               m.title,
+               m.description,
+               m.file_name,
+               m.mime_type
+            FROM materials AS m
+            JOIN courses   AS c ON m.course_id = c.id
+        WHERE m.id = %s
+            AND c.educator_id = %s
         """, (material_id, user_id))
         material = cur.fetchone()
 
@@ -81,8 +87,8 @@ def register_material_routes(app, mysql):
         if request.method == "POST":
             new_title = request.form["title"]
             new_description = request.form["description"]
-
             uploaded_file = request.files.get("file")
+            
             if uploaded_file and uploaded_file.filename:
                 # File was uploaded, update it
                 new_filename = secure_filename(uploaded_file.filename)
@@ -92,15 +98,15 @@ def register_material_routes(app, mysql):
                 cur.execute("""
                     UPDATE materials
                     SET title = %s, description = %s, file = %s, file_name = %s, mime_type = %s
-                    WHERE id = %s AND uploader_id = %s
-                """, (new_title, new_description, new_file_data, new_filename, new_mime, material_id, user_id))
+                    WHERE id = %s 
+                """, (new_title, new_description, new_file_data, new_filename, new_mime, material_id))
             else:
                 # No new file uploaded — only update text fields
                 cur.execute("""
                     UPDATE materials
                     SET title = %s, description = %s
-                    WHERE id = %s AND uploader_id = %s
-                """, (new_title, new_description, material_id, user_id))
+                    WHERE id = %s 
+                """, (new_title, new_description, material_id))
 
             mysql.connection.commit()
             cur.close()

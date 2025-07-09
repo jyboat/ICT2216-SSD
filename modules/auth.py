@@ -425,6 +425,7 @@ def register_auth_routes(app, mysql, bcrypt, serializer):
 
     @auth_bp.route("/reset/<token>", methods=["GET", "POST"])
     def reset_password(token):
+        error = request.args.get('error')  
         try:
             email = serializer.loads(
                 token,
@@ -432,11 +433,11 @@ def register_auth_routes(app, mysql, bcrypt, serializer):
                 max_age=300
             )
         except SignatureExpired:
-            error="Link Expired"
-            return redirect(url_for("auth.forget_password", error=error))
+            flash("This reset link has expired.", "danger")
+            return redirect(url_for("auth.forget_password"))
         except BadSignature:
-            error="Invalid Link"
-            return redirect(url_for("auth.forget_password", error=error))
+            flash("This reset link is invalid.", "danger")
+            return redirect(url_for("auth.forget_password"))
         
         token_hash = hashlib.sha256(token.encode("utf-8")).hexdigest()
         with mysql.connection.cursor() as cur:

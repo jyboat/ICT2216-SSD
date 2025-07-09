@@ -171,7 +171,7 @@ def register_forum_routes(app, mysql):
   
         if user_id != educator_id:
             cur.close()
-            abort(403, description="Only the assigned educator can delete this post")
+            abort(403, description="Access denied")
 
     
         cur.execute("DELETE FROM forum_posts WHERE id = %s", (post_id,))
