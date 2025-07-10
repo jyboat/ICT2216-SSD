@@ -26,7 +26,6 @@ def register_course_routes(app, mysql):
             cur.execute("SELECT 1 FROM enrollments WHERE user_id = %s AND course_id = %s", (user_id, course_id))
         elif role == "educator":
             cur.execute("SELECT 1 FROM courses WHERE id = %s AND educator_id = %s", (course_id, user_id))
-
         allowed = cur.fetchone()
         if not allowed:
             cur.close()

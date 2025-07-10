@@ -155,8 +155,7 @@ def register_user_routes(app, mysql, bcrypt):
             email = request.form.get("email", "").strip().lower()
             new_role = request.form.get("role", "")
             selected_codes = request.form.getlist("course_codes")
-            cur.execute("SELECT role FROM users WHERE id = %s", (user_id,))
-            old_role = cur.fetchone()[0]
+            
             # validation
             if not name or len(name) > 100:
                 abort(400, "Name is required (max 100 chars)")
@@ -164,6 +163,9 @@ def register_user_routes(app, mysql, bcrypt):
                 abort(400, "Invalid email address")
             if new_role not in ("student", "educator", "admin"):
                 abort(400, "Invalid role")
+
+            cur.execute("SELECT role FROM users WHERE id = %s", (user_id,))
+            old_role = cur.fetchone()[0]
 
             cur.execute("""
                 UPDATE users
@@ -178,15 +180,15 @@ def register_user_routes(app, mysql, bcrypt):
                 "DELETE FROM enrollments WHERE user_id = %s",
                 (user_id,)
             )
-
-            for code in selected_codes:
-                cur.execute("""
-                    INSERT INTO enrollments (user_id, course_id)
-                    VALUES (
-                      %s,
-                      (SELECT id FROM courses WHERE course_code = %s)
-                    )
-                """, (user_id, code))
+            if new_role == "student":
+                for code in selected_codes:
+                    cur.execute("""
+                        INSERT INTO enrollments (user_id, course_id)
+                        VALUES (
+                        %s,
+                        (SELECT id FROM courses WHERE course_code = %s)
+                        )
+                    """, (user_id, code))
 
             mysql.connection.commit()
             cur.close()
