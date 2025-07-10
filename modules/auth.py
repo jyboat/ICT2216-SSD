@@ -599,24 +599,30 @@ def register_auth_routes(app, mysql, bcrypt, serializer):
             pw = form.get("password", "")
             confirm_pw = form.get("confirm", "")
             errors = validate_password_fields(pw, confirm_pw)
-        
-            if not errors:
-                new_pw_hash = bcrypt.generate_password_hash(pw).decode("utf-8")
-                with mysql.connection.cursor() as cur:
-                    cur.execute(
-                    """
-                    UPDATE users
-                    SET password_hash = %s,
-                    password_token = NULL
-                    WHERE id = %s
-                    """,
-                    (new_pw_hash, user_id)
-                    )
-                mysql.connection.commit()
 
-                session.clear()
-                flash("Your password has been reset. Please log in with your new password.", "success")
-                return redirect(url_for("auth.login",hide_header=True))
+            if errors:
+                # FLASH each missing-requirement back to the user
+                for e in errors:
+                    flash(e, "danger")
+                return render_template("reset_password.html", hide_header=True)
+        
+            
+            new_pw_hash = bcrypt.generate_password_hash(pw).decode("utf-8")
+            with mysql.connection.cursor() as cur:
+                cur.execute(
+                """
+                UPDATE users
+                SET password_hash = %s,
+                password_token = NULL
+                WHERE id = %s
+                """,
+                (new_pw_hash, user_id)
+                )
+            mysql.connection.commit()
+
+            session.clear()
+            flash("Your password has been reset. Please log in with your new password.", "success")
+            return redirect(url_for("auth.login",hide_header=True))
 
         return render_template("reset_password.html",hide_header=True)
 
