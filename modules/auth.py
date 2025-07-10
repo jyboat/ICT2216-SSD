@@ -15,6 +15,7 @@ from collections import defaultdict
 import hashlib
 from flask import current_app
 from dotenv import load_dotenv
+from email_validator import validate_email, EmailNotValidError
 
 auth_bp = Blueprint("auth", __name__)
 
@@ -35,16 +36,14 @@ def generate_qr(secret, email):
     qr_img.save(buf, format='PNG')
     return base64.b64encode(buf.getvalue()).decode('utf-8')
 
-
-# Regular expressions for email and password validation
-EMAIL_REGEX = re.compile(r"[^@]+@[^@]+\.[^@]+")
-
 def validate_email_field(email):
     errors = []
     if not email:
-        errors.append("Email is required.")
-    elif not EMAIL_REGEX.fullmatch(email):
-        errors.append("Invalid email address.")
+        return ["Email is required."]
+    try:
+        validate_email(email)
+    except EmailNotValidError as exc:
+        errors.append(str(exc))
     return errors
 
 def validate_password_fields(pw, confirm_pw):
@@ -546,7 +545,7 @@ def register_auth_routes(app, mysql, bcrypt, serializer):
                     row = cur.fetchone()
             
                     if not row or row[0].lower() == "admin":
-                        return render_template("forget_password_sent.html")
+                        return render_template("forget_password_sent.html", hide_header=True)
 
                     token = serializer.dumps(email, salt="password-reset-salt")
                     token_hash = hashlib.sha256(token.encode("utf-8")).hexdigest()
@@ -599,24 +598,26 @@ def register_auth_routes(app, mysql, bcrypt, serializer):
             pw = form.get("password", "")
             confirm_pw = form.get("confirm", "")
             errors = validate_password_fields(pw, confirm_pw)
-        
-            if not errors:
-                new_pw_hash = bcrypt.generate_password_hash(pw).decode("utf-8")
-                with mysql.connection.cursor() as cur:
-                    cur.execute(
-                    """
-                    UPDATE users
-                    SET password_hash = %s,
-                    password_token = NULL
-                    WHERE id = %s
-                    """,
-                    (new_pw_hash, user_id)
-                    )
-                mysql.connection.commit()
 
-                session.clear()
-                flash("Your password has been reset. Please log in with your new password.", "success")
-                return redirect(url_for("auth.login",hide_header=True))
+            if errors:
+                return render_template("reset_password.html", hide_header=True,errors=errors)
+        
+            new_pw_hash = bcrypt.generate_password_hash(pw).decode("utf-8")
+            with mysql.connection.cursor() as cur:
+                cur.execute(
+                """
+                UPDATE users
+                SET password_hash = %s,
+                password_token = NULL
+                WHERE id = %s
+                """,
+                (new_pw_hash, user_id)
+                )
+            mysql.connection.commit()
+
+            session.clear()
+            flash("Your password has been reset. Please log in with your new password.", "success")
+            return redirect(url_for("auth.login",hide_header=True))
 
         return render_template("reset_password.html",hide_header=True)
 

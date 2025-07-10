@@ -16,7 +16,7 @@ from modules.materials import register_material_routes
 from modules.user import register_user_routes
 from modules.auth import register_auth_routes
 import secrets
-
+import hashlib
 
 
 
@@ -31,7 +31,7 @@ app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1)
 # bcrypt hashing
 app.secret_key = os.getenv("SECRET_KEY")
 bcrypt = Bcrypt(app)
-serializer = URLSafeTimedSerializer(app.secret_key)
+serializer = URLSafeTimedSerializer(app.secret_key,signer_kwargs={'digest_method': hashlib.sha256})
 
 # cf key.
 cf_secret_key = os.getenv("CF_SECRET_KEY")
@@ -181,18 +181,10 @@ def home():
     elif role == "educator":
         # Get educator's courses
         cur.execute("""
-            SELECT DISTINCT c.id, c.course_code, c.name
-            FROM (
-            SELECT id, course_code, name
-            FROM courses
-            WHERE educator_id = %s
-            UNION SELECT c2.id, c2.course_code, c2.name
-            FROM enrollments e2
-            JOIN courses c2 ON e2.course_id = c2.id
-            WHERE e2.user_id = %s
-            ) AS c
-            ORDER BY c.course_code
-            """, (user_id, user_id))
+            SELECT c.id, c.course_code, c.name
+            FROM courses c
+            WHERE c.educator_id = %s
+        """, (user_id,))
         courses = cur.fetchall()
         announcements = []
 
@@ -220,4 +212,4 @@ register_auth_routes(app, mysql, bcrypt, serializer)
 
 
 if __name__ == "__main__":
-    app.run(debug=True, host="0.0.0.0", port=443)
+    app.run(debug=False, host="0.0.0.0", port=443)
