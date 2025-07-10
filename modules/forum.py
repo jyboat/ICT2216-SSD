@@ -114,7 +114,7 @@ def register_forum_routes(app, mysql):
             cur.close()
             abort(404, "Access denied")
 
-        if author_id != user_id:
+        if author_id != user_id or is_educator():
             cur.execute("""
                 SELECT 1
                   FROM courses
