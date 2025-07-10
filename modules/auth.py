@@ -77,7 +77,6 @@ def register_auth_routes(app, mysql, bcrypt, serializer):
     def login():
         #if is_logged_in(mysql):
         #    return redirect(url_for('home'))
-        print('LOGIN PAGE REACHED')
         error_param = request.args.get('error')
         error_message = None
         if error_param == 'session_expired':
@@ -168,7 +167,6 @@ def register_auth_routes(app, mysql, bcrypt, serializer):
                             'remember_me': request.form.get('remember_me')
                         }
                         
-                        print('LOGIN SESSION:', dict(session))
                         return render_template("login_warning.html",
                                                 email=email,
                                                 password=password,
@@ -433,7 +431,6 @@ def register_auth_routes(app, mysql, bcrypt, serializer):
     # login warning handler
     @auth_bp.route('/handle-login-warning', methods=['POST'])
     def handle_login_warning():
-        print('WARNING SESSION:', dict(session))
         
         action = request.form['action']
 
