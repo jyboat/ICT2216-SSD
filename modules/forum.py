@@ -113,8 +113,13 @@ def register_forum_routes(app, mysql):
         if not tc or tc[0] != course_id:
             cur.close()
             abort(404, "Access denied")
-
-        if author_id != user_id or is_educator():
+        cur.execute("SELECT role FROM users WHERE id = %s", (user_id,))
+        role_row = cur.fetchone()
+        cur.close()
+        if not role_row:
+            abort(403, "Access denied")
+        role = role_row[0]
+        if author_id != user_id or role == 'educator':
             cur.execute("""
                 SELECT 1
                   FROM courses
