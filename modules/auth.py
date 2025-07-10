@@ -604,7 +604,7 @@ def register_auth_routes(app, mysql, bcrypt, serializer):
                 # FLASH each missing-requirement back to the user
                 for e in errors:
                     flash(e, "danger")
-                return render_template("reset_password.html", hide_header=True)
+                return render_template("reset_password.html", hide_header=True,errors=errors)
         
             
             new_pw_hash = bcrypt.generate_password_hash(pw).decode("utf-8")
