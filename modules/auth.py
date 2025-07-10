@@ -15,6 +15,7 @@ from collections import defaultdict
 import hashlib
 from flask import current_app
 from dotenv import load_dotenv
+from email_validator import validate_email, EmailNotValidError
 
 auth_bp = Blueprint("auth", __name__)
 
@@ -35,16 +36,14 @@ def generate_qr(secret, email):
     qr_img.save(buf, format='PNG')
     return base64.b64encode(buf.getvalue()).decode('utf-8')
 
-
-# Regular expressions for email and password validation
-EMAIL_REGEX = re.compile(r"[^@]+@[^@]+\.[^@]+")
-
 def validate_email_field(email):
     errors = []
     if not email:
-        errors.append("Email is required.")
-    elif not EMAIL_REGEX.fullmatch(email):
-        errors.append("Invalid email address.")
+        return ["Email is required."]
+    try:
+        validate_email(email)
+    except EmailNotValidError as exc:
+        errors.append(str(exc))
     return errors
 
 def validate_password_fields(pw, confirm_pw):
