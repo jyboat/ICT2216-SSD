@@ -16,7 +16,7 @@ from modules.materials import register_material_routes
 from modules.user import register_user_routes
 from modules.auth import register_auth_routes
 import secrets
-
+import hashlib
 
 
 
@@ -31,7 +31,7 @@ app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1)
 # bcrypt hashing
 app.secret_key = os.getenv("SECRET_KEY")
 bcrypt = Bcrypt(app)
-serializer = URLSafeTimedSerializer(app.secret_key)
+serializer = URLSafeTimedSerializer(app.secret_key,signer_kwargs={'digest_method': hashlib.sha256})
 
 # cf key.
 cf_secret_key = os.getenv("CF_SECRET_KEY")

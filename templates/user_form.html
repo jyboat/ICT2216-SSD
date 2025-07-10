@@ -30,13 +30,13 @@
 
             <div class="mb-3">
                 <label class="form-label">Role</label>
-                <select class="form-select" name="role" required>
+                <select class="form-select" name="role" id="role-select" required>
                     {% for r in ['student', 'educator', 'admin'] %}
                     <option value="{{ r }}" {% if user and user[2]==r %}selected{% endif %}>{{ r.title() }}</option>
                     {% endfor %}
                 </select>
             </div>
-            <div class="mb-3">
+            <div class="mb-3" id=""courses-wrapper>
                 <label for="course_codes" class="form-label">Courses</label>
                 <select class="form-select" name="course_codes" id="course_codes" multiple size="5">
                     {% for code in course_codes %}
@@ -49,6 +49,15 @@
             </div>
             <button type="submit" class="btn btn-primary">{{ action }}</button>
         </form>
+        <script>
+            const roleSel = document.getElementById('role-select');
+            const coursesEl = document.getElementById('courses-wrapper');
+            function toggleCourses() {
+                coursesEl.style.display = (roleSel.value === 'student' ? '' : 'none');
+            }
+            roleSel.addEventListener('change', toggleCourses);
+            toggleCourses();
+        </script>
     </div>
 </div>
 {% endblock %}
