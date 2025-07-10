@@ -115,7 +115,6 @@ def register_forum_routes(app, mysql):
             abort(404, "Access denied")
         cur.execute("SELECT role FROM users WHERE id = %s", (user_id,))
         role_row = cur.fetchone()
-        cur.close()
         if not role_row:
             abort(403, "Access denied")
         role = role_row[0]
