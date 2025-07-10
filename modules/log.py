@@ -20,6 +20,11 @@ def log_to_database(mysql, type, status_code, user_id, ip_address, path, message
     cur.close()
 
 def log_to_splunk(event_data):
+
+    # get real ip
+    if 'ip_address' in event_data:
+        event_data['ip_address'] = request.headers.get('X-Real-IP', event_data['ip_address'])
+        
     url = f"https://{SPLUNK_HOST}:{SPLUNK_HEC_PORT}/services/collector"
     headers = {
         "Authorization": f"Splunk {SPLUNK_HEC_TOKEN}",
