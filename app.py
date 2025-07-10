@@ -181,18 +181,10 @@ def home():
     elif role == "educator":
         # Get educator's courses
         cur.execute("""
-            SELECT DISTINCT c.id, c.course_code, c.name
-            FROM (
-            SELECT id, course_code, name
-            FROM courses
-            WHERE educator_id = %s
-            UNION SELECT c2.id, c2.course_code, c2.name
-            FROM enrollments e2
-            JOIN courses c2 ON e2.course_id = c2.id
-            WHERE e2.user_id = %s
-            ) AS c
-            ORDER BY c.course_code
-            """, (user_id, user_id))
+            SELECT c.id, c.course_code, c.name
+            FROM courses c
+            WHERE c.educator_id = %s
+        """, (user_id,))
         courses = cur.fetchall()
         announcements = []
 
