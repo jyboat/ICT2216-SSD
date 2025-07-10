@@ -545,7 +545,7 @@ def register_auth_routes(app, mysql, bcrypt, serializer):
                     row = cur.fetchone()
             
                     if not row or row[0].lower() == "admin":
-                        return render_template("forget_password_sent.html")
+                        return render_template("forget_password_sent.html", hide_header=True)
 
                     token = serializer.dumps(email, salt="password-reset-salt")
                     token_hash = hashlib.sha256(token.encode("utf-8")).hexdigest()
