@@ -4,6 +4,9 @@ services:
   app:
     image: finalfuryz/p1_g4_ssd:latest
     restart: always
+    command: flask run --host=0.0.0.0 --port=5000
+    ports:
+      - "5000:5000"
     networks:
       - SSDNET
     env_file:
@@ -34,12 +37,36 @@ services:
       - .env
     volumes:
       - mysql_data:/var/lib/mysql
-      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - SSDNET
+  splunk:
+    image: splunk/splunk:latest
+    ports:
+      - "8888:8000"
+      - "8080:8088"
+    environment:
+      SPLUNK_PASSWORD: ${SPLUNK_PASSWORD}
+      SPLUNK_START_ARGS: --accept-license
+      SPLUNK_HOME: /opt/splunk
+      SPLUNK_USER: splunk
+      SPLUNK_HTTP_ENABLESSL: "true"
+      SPLUNK_HTTP_ENABLESSL_CERT: /opt/splunk/etc/auth/certs/fullchain.pem
+      SPLUNK_HTTP_ENABLESSL_PRIVKEY: /opt/splunk/etc/auth/certs/privkey.pem
+      SPLUNK_HEC_TOKEN: e01244bd-6b33-44be-b270-f1a5d12d9871
+    volumes:
+      - /opt/splunk/certs/fullchain.pem:/opt/splunk/etc/auth/certs/fullchain.pem:ro
+      - /opt/splunk/certs/privkey.pem:/opt/splunk/etc/auth/certs/privkey.pem:ro
+      - mysql_data:/mysql_data:ro
+      - splunk_data:/opt/splunk/var
+      - splunk_etc:/opt/splunk/etc
     networks:
       - SSDNET
 
 volumes:
   mysql_data:
+    name: mysql_data
+  splunk_data:
+  splunk_etc:
 
 networks:
   SSDNET:
