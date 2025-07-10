@@ -538,60 +538,60 @@ def register_auth_routes(app, mysql, bcrypt, serializer):
             form = request.form
             email = (form.get("email") or "").strip().lower()
             cf_turnstile_response = request.form.get('cf-turnstile-response')
-        if current_app.config.get("TESTING"):
-            pass  
+            if current_app.config.get("TESTING"):
+                pass  
 
-        # If no token was provided, return an error
-        if not cf_turnstile_response:
-            suspicious_logger.warning(f"reset password attempt without Cloudflare verification - IP: {ip}")
-            log_to_database(mysql,"WARNING", 400, 'Unauthenticated', ip, "/reset_password", "Login attempt without Cloudflare verification")
-            return render_template("reset_password.html", error="Please complete the security check", hide_header=True)
+            # If no token was provided, return an error
+            if not cf_turnstile_response:
+                suspicious_logger.warning(f"reset password attempt without Cloudflare verification - IP: {ip}")
+                log_to_database(mysql,"WARNING", 400, 'Unauthenticated', ip, "/reset_password", "Login attempt without Cloudflare verification")
+                return render_template("reset_password.html", error="Please complete the security check", hide_header=True)
 
-        # Verify the token with Cloudflare
-        verification_data = {
-            'secret': cf_secret_key,
-            'response': cf_turnstile_response,
-            'remoteip': ip
-        }
-        try:
-            verification_response = requests.post(
-                'https://challenges.cloudflare.com/turnstile/v0/siteverify',
-                data=verification_data
-            ).json()
+            # Verify the token with Cloudflare
+            verification_data = {
+                'secret': cf_secret_key,
+                'response': cf_turnstile_response,
+                'remoteip': ip
+            }
+            try:
+                verification_response = requests.post(
+                    'https://challenges.cloudflare.com/turnstile/v0/siteverify',
+                    data=verification_data
+                ).json()
 
-            # If verification failed, return an error
-            if not verification_response.get('success'):
-                suspicious_logger.warning(f"Failed Cloudflare verification - IP: {ip}")
-                log_to_database(mysql,"WARNING", 400, 'Unauthenticated', ip, "/forget_password", "Failed Cloudflare verification")
-                return render_template("forget_password.html", error="Security check failed. Please try again.", hide_header=True)
-        except Exception as e:
-            # Handle request exceptions
-            suspicious_logger.error(f"Cloudflare verification error: {str(e)} - IP: {ip}")
-            log_to_database(mysql,"ERROR", 500, 'Unauthenticated', ip, "/forget_password", f"Cloudflare verification error: {str(e)}")
-            return render_template("forget_password.html", error="An error occurred during verification. Please try again.", hide_header=True)
-        
-        errors = validate_email_field(email)
+                # If verification failed, return an error
+                if not verification_response.get('success'):
+                    suspicious_logger.warning(f"Failed Cloudflare verification - IP: {ip}")
+                    log_to_database(mysql,"WARNING", 400, 'Unauthenticated', ip, "/forget_password", "Failed Cloudflare verification")
+                    return render_template("forget_password.html", error="Security check failed. Please try again.", hide_header=True)
+            except Exception as e:
+                # Handle request exceptions
+                suspicious_logger.error(f"Cloudflare verification error: {str(e)} - IP: {ip}")
+                log_to_database(mysql,"ERROR", 500, 'Unauthenticated', ip, "/forget_password", f"Cloudflare verification error: {str(e)}")
+                return render_template("forget_password.html", error="An error occurred during verification. Please try again.", hide_header=True)
+            
+            errors = validate_email_field(email)
 
-        if not errors:
-            with mysql.connection.cursor() as cur:
-                cur.execute("SELECT role FROM users WHERE email = %s",(email,))
-                row = cur.fetchone()
-        
-                if not row or row[0].lower() == "admin":
-                    return render_template("forget_password_sent.html")
+            if not errors:
+                with mysql.connection.cursor() as cur:
+                    cur.execute("SELECT role FROM users WHERE email = %s",(email,))
+                    row = cur.fetchone()
+            
+                    if not row or row[0].lower() == "admin":
+                        return render_template("forget_password_sent.html")
 
-                token = serializer.dumps(email, salt="password-reset-salt")
-                token_hash = hashlib.sha256(token.encode("utf-8")).hexdigest()
-                cur.execute(
-                    "UPDATE users SET password_token = %s WHERE email = %s",
-                (token_hash, email)
-                )
-            mysql.connection.commit()
-        
-            reset_url = url_for("auth.reset_password", token=token, _external=True)
-            send_reset_email_via_sendgrid(email, reset_url)
+                    token = serializer.dumps(email, salt="password-reset-salt")
+                    token_hash = hashlib.sha256(token.encode("utf-8")).hexdigest()
+                    cur.execute(
+                        "UPDATE users SET password_token = %s WHERE email = %s",
+                    (token_hash, email)
+                    )
+                mysql.connection.commit()
+            
+                reset_url = url_for("auth.reset_password", token=token, _external=True)
+                send_reset_email_via_sendgrid(email, reset_url)
 
-            return render_template("forget_password_sent.html", hide_header=True)
+                return render_template("forget_password_sent.html", hide_header=True)
 
         return render_template("forget_password.html",errors=errors,email=email, hide_header=True)
 
