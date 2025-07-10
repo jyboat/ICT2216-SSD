@@ -52,7 +52,7 @@ services:
       SPLUNK_HTTP_ENABLESSL: "true"
       SPLUNK_HTTP_ENABLESSL_CERT: /opt/splunk/etc/auth/certs/fullchain.pem
       SPLUNK_HTTP_ENABLESSL_PRIVKEY: /opt/splunk/etc/auth/certs/privkey.pem
-      SPLUNK_HEC_TOKEN: e01244bd-6b33-44be-b270-f1a5d12d9871
+      SPLUNK_HEC_TOKEN: ${SPLUNK_HEC_TOKEN}
     volumes:
       - /opt/splunk/certs/fullchain.pem:/opt/splunk/etc/auth/certs/fullchain.pem:ro
       - /opt/splunk/certs/privkey.pem:/opt/splunk/etc/auth/certs/privkey.pem:ro
